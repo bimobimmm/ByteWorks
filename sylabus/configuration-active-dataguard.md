@@ -1,111 +1,17 @@
-# Oracle Active Data Guard (ADG) Configuration Guide
+# Oracle Active Data Guard (ADG) Configuration Script
 
 ## 1. Environment
 
-| Parameter | Value |
-|----------|------|
-| ORACLE_SID | BYTEWORK |
-| ORACLE_HOME | /data/u01/app/oracle/product/19.0.0/dbhome_19 |
-| DB_UNIQUE_NAME (Primary) | ByteWorks |
-| DB_UNIQUE_NAME (Standby) | ByteWorks_standby |
-| Archive Location | /data/archivelog/ByteWorks |
+- ORACLE_SID       : BYTEWORK
+- ORACLE_HOME      : /data/u01/app/oracle/product/19.0.0/dbhome_19
+- DB_UNIQUE_NAME   : ByteWorks / ByteWorks_standby
+- Archive Location : /data/archivelog/ByteWorks
 
 ---
 
-## 2. Network Configuration
-
-### Primary - tnsnames.ora
-
-```ini
-BYTEWORK_PRIMARY =
-  (DESCRIPTION =
-    (ADDRESS = (PROTOCOL = TCP)(HOST = PRIMARY_IP)(PORT = 1521))
-    (CONNECT_DATA =
-      (SERVICE_NAME = BYTEWORK_PRIMARY)
-    )
-  )
-
-BYTEWORK_STANDBY =
-  (DESCRIPTION =
-    (ADDRESS = (PROTOCOL = TCP)(HOST = STANDBY_IP)(PORT = 1521))
-    (CONNECT_DATA =
-      (SERVICE_NAME = BYTEWORK_STANDBY)
-    )
-  )
-```
-
----
-
-### Standby - tnsnames.ora
-
-```ini
-BYTEWORK_PRIMARY =
-  (DESCRIPTION =
-    (ADDRESS = (PROTOCOL = TCP)(HOST = PRIMARY_IP)(PORT = 1521))
-    (CONNECT_DATA =
-      (SERVICE_NAME = BYTEWORK_PRIMARY)
-    )
-  )
-
-BYTEWORK_STANDBY =
-  (DESCRIPTION =
-    (ADDRESS = (PROTOCOL = TCP)(HOST = STANDBY_IP)(PORT = 1521))
-    (CONNECT_DATA =
-      (SERVER = DEDICATED)
-      (SERVICE_NAME = BYTEWORK_STANDBY)
-    )
-  )
-```
-
----
-
-## 3. Listener Configuration
-
-### Primary
-
-```ini
-LISTENER_BYTEWORK =
-  (DESCRIPTION_LIST =
-    (DESCRIPTION =
-      (ADDRESS = (PROTOCOL = TCP)(HOST = PRIMARY_IP)(PORT = 1521))
-    )
-  )
-
-SID_LIST_LISTENER_BYTEWORK =
-  (SID_LIST =
-    (SID_DESC =
-      (GLOBAL_DBNAME = BYTEWORK_PRIMARY)
-      (ORACLE_HOME = /data/u01/app/oracle/product/19.0.0/dbhome_19)
-      (SID_NAME = BYTEWORK)
-    )
-  )
-```
-
----
-
-### Standby
-
-```ini
-LISTENER_BYTEWORK =
-  (DESCRIPTION_LIST =
-    (DESCRIPTION =
-      (ADDRESS = (PROTOCOL = TCP)(HOST = STANDBY_IP)(PORT = 1521))
-    )
-  )
-
-SID_LIST_LISTENER_BYTEWORK =
-  (SID_LIST =
-    (SID_DESC =
-      (GLOBAL_DBNAME = BYTEWORK_STANDBY)
-      (ORACLE_HOME = /data/u01/app/oracle/product/19.0.0/dbhome_19)
-      (SID_NAME = BYTEWORK)
-    )
-  )
-```
-
----
-
-## 4. Enable Archivelog
+# =========================================
+# 2. ENABLE ARCHIVELOG (PRIMARY & STANDBY)
+# =========================================
 
 ```sql
 ARCHIVE LOG LIST;
@@ -117,18 +23,25 @@ ALTER DATABASE OPEN;
 
 ---
 
-## 5. DB Unique Name
+# =========================================
+# 3. SET DB UNIQUE NAME
+# =========================================
 
 ```sql
+-- PRIMARY
 ALTER SYSTEM SET db_unique_name='ByteWorks' SCOPE=BOTH;
+
+-- STANDBY
 ALTER SYSTEM SET db_unique_name='ByteWorks_standby' SCOPE=BOTH;
 ```
 
 ---
 
-## 6. Data Guard Configuration
+# =========================================
+# 4. DATA GUARD CONFIGURATION
+# =========================================
 
-### Primary
+## PRIMARY
 
 ```sql
 ALTER SYSTEM SET LOG_ARCHIVE_CONFIG='DG_CONFIG=(ByteWorks,ByteWorks_standby)' SCOPE=BOTH;
@@ -150,7 +63,7 @@ ALTER SYSTEM SET REMOTE_LOGIN_PASSWORDFILE=EXCLUSIVE SCOPE=SPFILE;
 
 ---
 
-### Standby
+## STANDBY
 
 ```sql
 ALTER SYSTEM SET LOG_ARCHIVE_CONFIG='DG_CONFIG=(ByteWorks,ByteWorks_standby)' SCOPE=BOTH;
@@ -172,7 +85,51 @@ ALTER SYSTEM SET REMOTE_LOGIN_PASSWORDFILE=EXCLUSIVE SCOPE=SPFILE;
 
 ---
 
-## 7. Password File
+# =========================================
+# 5. CREATE STANDBY REDO LOG (SRL)
+# =========================================
+
+## Check redo log (PRIMARY)
+
+```sql
+SELECT GROUP#, BYTES/1024/1024 AS SIZE_MB FROM V$LOG;
+```
+
+---
+
+## Create SRL (PRIMARY)
+
+```sql
+ALTER DATABASE ADD STANDBY LOGFILE GROUP 4 '/data/oradata/ByteWorks/srl04.log' SIZE 200M;
+ALTER DATABASE ADD STANDBY LOGFILE GROUP 5 '/data/oradata/ByteWorks/srl05.log' SIZE 200M;
+ALTER DATABASE ADD STANDBY LOGFILE GROUP 6 '/data/oradata/ByteWorks/srl06.log' SIZE 200M;
+ALTER DATABASE ADD STANDBY LOGFILE GROUP 7 '/data/oradata/ByteWorks/srl07.log' SIZE 200M;
+```
+
+---
+
+## Create SRL (STANDBY)
+
+```sql
+ALTER DATABASE ADD STANDBY LOGFILE GROUP 4 '/data/oradata/ByteWorks_standby/srl04.log' SIZE 200M;
+ALTER DATABASE ADD STANDBY LOGFILE GROUP 5 '/data/oradata/ByteWorks_standby/srl05.log' SIZE 200M;
+ALTER DATABASE ADD STANDBY LOGFILE GROUP 6 '/data/oradata/ByteWorks_standby/srl06.log' SIZE 200M;
+ALTER DATABASE ADD STANDBY LOGFILE GROUP 7 '/data/oradata/ByteWorks_standby/srl07.log' SIZE 200M;
+```
+
+---
+
+## Verify SRL
+
+```sql
+SELECT GROUP#, STATUS, BYTES/1024/1024 AS SIZE_MB FROM V$STANDBY_LOG;
+```
+
+---
+
+# =========================================
+# 6. PASSWORD FILE
+# =========================================
 
 ```bash
 orapwd file=$ORACLE_HOME/dbs/orapwBYTEWORK password=YourPassword force=y
@@ -181,7 +138,9 @@ scp $ORACLE_HOME/dbs/orapwBYTEWORK oracle@STANDBY_IP:$ORACLE_HOME/dbs/
 
 ---
 
-## 8. Create Standby (RMAN)
+# =========================================
+# 7. CREATE STANDBY DATABASE
+# =========================================
 
 ```rman
 recover standby database from service BYTEWORK_PRIMARY;
@@ -189,7 +148,9 @@ recover standby database from service BYTEWORK_PRIMARY;
 
 ---
 
-## 9. Open Standby
+# =========================================
+# 8. OPEN STANDBY
+# =========================================
 
 ```sql
 ALTER DATABASE OPEN READ ONLY;
@@ -197,7 +158,9 @@ ALTER DATABASE OPEN READ ONLY;
 
 ---
 
-## 10. Enable MRP
+# =========================================
+# 9. ENABLE MRP (REAL-TIME APPLY)
+# =========================================
 
 ```sql
 ALTER DATABASE RECOVER MANAGED STANDBY DATABASE DISCONNECT USING CURRENT LOGFILE;
@@ -205,7 +168,9 @@ ALTER DATABASE RECOVER MANAGED STANDBY DATABASE DISCONNECT USING CURRENT LOGFILE
 
 ---
 
-## 11. Validation
+# =========================================
+# 10. VALIDATION
+# =========================================
 
 ```sql
 SELECT NAME, OPEN_MODE, DATABASE_ROLE FROM V$DATABASE;
@@ -214,7 +179,9 @@ SELECT PROCESS, STATUS, THREAD#, SEQUENCE# FROM V$MANAGED_STANDBY;
 
 ---
 
-## 12. Check Replication Gap
+# =========================================
+# 11. CHECK GAP
+# =========================================
 
 ```sql
 ALTER SESSION SET nls_date_format='DD-MM-YYYY HH24:MI:SS';
@@ -234,7 +201,9 @@ WHERE A.THREAD#=B.THREAD#;
 
 ---
 
-## 13. Test Log Shipping
+# =========================================
+# 12. TEST LOG SHIPPING
+# =========================================
 
 ```sql
 ALTER SYSTEM ARCHIVE LOG CURRENT;
@@ -242,7 +211,9 @@ ALTER SYSTEM ARCHIVE LOG CURRENT;
 
 ---
 
-## 14. Enable Broker (Optional)
+# =========================================
+# 13. ENABLE BROKER (OPTIONAL)
+# =========================================
 
 ```sql
 ALTER SYSTEM SET DG_BROKER_START=TRUE SCOPE=BOTH;
@@ -250,19 +221,11 @@ ALTER SYSTEM SET DG_BROKER_START=TRUE SCOPE=BOTH;
 
 ---
 
-## 15. Restart Required (Important)
+# =========================================
+# 14. RESTART (REQUIRED)
+# =========================================
 
 ```sql
 SHUTDOWN IMMEDIATE;
 STARTUP;
 ```
-
----
-
-## Summary
-
-- Mode: Active Data Guard  
-- Replication: Real-time apply  
-- Archive: /data/archivelog/ByteWorks  
-- Primary: ByteWorks  
-- Standby: ByteWorks_standby  
