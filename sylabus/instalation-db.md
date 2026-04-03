@@ -1,24 +1,19 @@
 <h1>How To Create Database On Oracle 19C</h1>
 
-<h2>Step 1 - Open DBCA</h2>
-<p>Pilih Create Database</p>
+<p>Step 1 - Open DBCA dan Pilih Create Database</p>
 <img src="../images/instalation-db/1.png" width="600"/>
 
-<h2>Step 2 - Advance Configuration (OPTIONAL)</h2>
-<p>Pilih Advance Configuration</p>
+<p>Step 2 - Pilih Advance Configuration</p>
 <img src="../images/instalation-db/2.png" width="600"/>
 
-<h2>Step 3 - Custom Database</h2>
-<p>Pilih Custom Database</p>
+<p>Step 3 - Pilih Custom Database</p>
 <img src="../images/instalation-db/3.png" width="600"/>
 
 <p>Step 4 - Masukan Global Database yang kamu inginkan, serta uncheck container (OPTIONAL) </p>
 <img src="../images/instalation-db/4.png" width="600"/>
 
-<h2>Step 5 - Custom Database</h2>
-<p>Pilih Custom Database</p>
+<p>Step 5 - Pilih Custom Database</p>
 <img src="../images/instalation-db/5.png" width="600"/>
 
-<h2>Step 6 - Custom Database</h2>
-<p>Pilih Custom Database</p>
+<p>Step 6 - Pilih Custom Database</p>
 <img src="../images/instalation-db/5.png" width="600"/>
