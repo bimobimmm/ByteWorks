@@ -1,13 +1,15 @@
-# 🛠️ How To Backup Restore Oracle RMAN (ByteWorks)
+# 🛠️ Oracle RMAN Backup & Restore Guide (ByteWorks)
 
-## 📌 Overview
-Script ini digunakan untuk melakukan **full backup (incremental level 0)** database Oracle menggunakan RMAN.  
-Backup disimpan otomatis berdasarkan tanggal, termasuk:
-- Database
-- Archivelog
-- Controlfile (current & standby)
+## 📌 Environment
+
+- ORACLE_SID      : BYTEWORK  
+- ORACLE_HOME     : /data/u01/app/oracle/product/19.0.0/dbhome_1  
+- Backup Location : /home/oracle/backup/BYTEWORK  
+- Log Location    : /home/oracle/backup/log/BYTEWORK  
 
 ---
+
+# 🔹 PART 1 — BACKUP DATABASE
 
 ## ⚙️ Script Backup
 
@@ -19,29 +21,24 @@ Backup disimpan otomatis berdasarkan tanggal, termasuk:
 # Project : ByteWorks
 # =============================================================
 
-# --- Konfigurasi dasar environment ---
 export ORACLE_SID=BYTEWORK
 export ORACLE_BASE=/data/u01/app/oracle
 export ORACLE_HOME=/data/u01/app/oracle/product/19.0.0/dbhome_1
 export ORACLE_HOSTNAME=PLVBIFDBD101
 export PATH=$PATH:$ORACLE_HOME/bin
 
-# --- Format tanggal ---
 DATE_DIR=$(date +%Y-%m-%d)
 DATETIME=$(date +%d%m%y_%H%M%S)
 
-# --- Direktori ---
 BACKUP_BASE="/home/oracle/backup/BYTEWORK"
 BACKUP_DIR="${BACKUP_BASE}/${DATE_DIR}"
 LOG_DIR="/home/oracle/backup/log/BYTEWORK"
 
-# --- Create directory ---
 mkdir -p "${BACKUP_DIR}"
 mkdir -p "${LOG_DIR}"
 
 echo "Backup started at $(date)"
 
-# --- RMAN Backup ---
 ${ORACLE_HOME}/bin/rman target=/ log="${LOG_DIR}/backup_${DATETIME}.log" <<EOF
 run
 {
@@ -65,17 +62,16 @@ run
 EXIT;
 EOF
 
-# --- Status ---
 if [ $? -eq 0 ]; then
-  echo "Backup SUCCESS at $(date)"
+  echo "Backup SUCCESS"
 else
-  echo "Backup FAILED at $(date)"
+  echo "Backup FAILED"
 fi
 ```
 
 ---
 
-## ▶️ Cara Menjalankan
+## ▶️ Menjalankan Backup
 
 ```bash
 chmod +x backup.sh
@@ -84,29 +80,163 @@ chmod +x backup.sh
 
 ---
 
-## 📂 Output Backup
+## ⚠️ Jika Database Belum ARCHIVELOG
 
-- 📁 Backup Directory:
-```
-/home/oracle/backup/BYTEWORK/YYYY-MM-DD/
-```
-
-- 📄 Log File:
-```
-/home/oracle/backup/log/BYTEWORK/backup_TIMESTAMP.log
+```sql
+startup mount;
+alter database archivelog;
+archive log list;
+alter database open;
 ```
 
 ---
 
-## ⚠️ Notes
+## 📄 Generate PFILE
 
-- Menggunakan **incremental level 0 (full backup)**
-- Sudah termasuk:
-  - Database
-  - Archivelog
-  - Controlfile
-- Script otomatis:
-  - Crosscheck backup
-  - Hapus expired backup
+```sql
+CREATE PFILE FROM SPFILE;
+```
+
+Lokasi:
+```
+$ORACLE_HOME/dbs
+```
 
 ---
+
+# 🔹 PART 2 — PREPARE RESTORE (PRIMARY → STANDBY)
+
+## 📦 Copy Backup
+
+```bash
+scp -r /home/oracle/backup/BYTEWORK/YYYY-MM-DD \
+oracle@STANDBY_IP:/home/oracle/backup/BYTEWORK
+```
+
+## 📄 Copy PFILE
+
+```bash
+scp $ORACLE_HOME/dbs/initBYTEWORK.ora \
+oracle@STANDBY_IP:$ORACLE_HOME/dbs
+```
+
+---
+
+# 🔹 PART 3 — PREPARE STANDBY
+
+## 📂 Create Required Directory
+
+```bash
+mkdir -p /data/u01/app/oracle/admin/BYTEWORK/adump
+mkdir -p /data/u01/app/oracle/recovery_area
+```
+
+---
+
+## ⚙️ Startup Nomount
+
+```sql
+startup nomount pfile='$ORACLE_HOME/dbs/initBYTEWORK.ora';
+```
+
+---
+
+## 🔹 PART 4 — RESTORE CONTROLFILE
+
+```rman
+restore controlfile from '/home/oracle/backup/BYTEWORK/YYYY-MM-DD/current_ctl_L0_*.bkp';
+alter database mount;
+```
+
+---
+
+## 🔹 PART 5 — REGISTER BACKUP
+
+```rman
+crosscheck backup;
+catalog start with '/home/oracle/backup/BYTEWORK/YYYY-MM-DD';
+```
+
+---
+
+# 🔹 PART 6 — SCRIPT RESTORE
+
+## ⚙️ Restore Script
+
+```bash
+#!/bin/bash
+
+export ORACLE_SID=BYTEWORK
+export ORACLE_BASE=/data/u01/app/oracle
+export ORACLE_HOME=/data/u01/app/oracle/product/19.0.0/dbhome_1
+export ORACLE_HOSTNAME=STANDBY_HOST
+export PATH=$PATH:$ORACLE_HOME/bin
+
+DATETIME=$(date +%d%m%y_%H%M%S)
+LOGFILE="/home/oracle/backup/log/BYTEWORK/restore_${DATETIME}.log"
+
+echo "Restore started at $(date)"
+
+${ORACLE_HOME}/bin/rman target=/ log="${LOGFILE}" <<EOF
+run {
+  restore database;
+  switch datafile all;
+  switch tempfile all;
+  recover database;
+}
+alter database open resetlogs;
+exit;
+EOF
+
+if [ $? -eq 0 ]; then
+  echo "Restore SUCCESS"
+else
+  echo "Restore FAILED"
+fi
+```
+
+---
+
+## ▶️ Jalankan Restore
+
+```bash
+chmod +x restore.sh
+./restore.sh
+```
+
+---
+
+# 🔹 PART 7 — POST RESTORE
+
+## 🔧 Create SPFILE
+
+```sql
+create spfile from pfile;
+create pfile from spfile;
+```
+
+---
+
+## ⚙️ Set DB Unique Name
+
+```sql
+alter system set db_unique_name='BYTEWORK_STBY' scope=spfile;
+```
+
+---
+
+# ✅ SUMMARY
+
+✔ Backup: RMAN Level 0 (Full)  
+✔ Include: DB + Archivelog + Controlfile  
+✔ Restore: Full restore + recover + resetlogs  
+✔ Environment: Consistent (BYTEWORK)
+
+---
+
+# 🚀 NEXT IMPROVEMENT
+
+- Setup cronjob automation
+- Email alert (success / failed)
+- Data Guard configuration
+- Monitoring tablespace & backup size
