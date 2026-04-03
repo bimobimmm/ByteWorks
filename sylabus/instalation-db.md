@@ -11,3 +11,15 @@
 <h2>Step 3 - Custom Database</h2>
 <p>Pilih Custom Database</p>
 <img src="../images/instalation-db/3.png" width="600"/>
+
+<h2>Step 4 - Custom Database</h2>
+<p>Pilih Custom Database</p>
+<img src="../images/instalation-db/4.png" width="600"/>
+
+<h2>Step 5 - Custom Database</h2>
+<p>Pilih Custom Database</p>
+<img src="../images/instalation-db/5.png" width="600"/>
+
+<h2>Step 6 - Custom Database</h2>
+<p>Pilih Custom Database</p>
+<img src="../images/instalation-db/5.png" width="600"/>
