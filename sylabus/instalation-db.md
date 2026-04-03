@@ -12,8 +12,7 @@
 <p>Pilih Custom Database</p>
 <img src="../images/instalation-db/3.png" width="600"/>
 
-<h2>Step 4 - Custom Database</h2>
-<p>Pilih Custom Database</p>
+<p>Step 4 - Masukan Global Database yang kamu inginkan, serta uncheck container (OPTIONAL) </p>
 <img src="../images/instalation-db/4.png" width="600"/>
 
 <h2>Step 5 - Custom Database</h2>
