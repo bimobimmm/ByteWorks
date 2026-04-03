@@ -5,7 +5,7 @@
 | Parameter        | Value |
 |-----------------|------|
 | ORACLE_SID      | BYTEWORK |
-| ORACLE_HOME     | /data/u01/app/oracle/product/19.0.0/dbhome_1 |
+| ORACLE_HOME     | /data/u01/app/oracle/product/19.0.0/dbhome_19 |
 | Backup Location | /home/oracle/backup/BYTEWORK |
 | Log Location    | /home/oracle/backup/log/BYTEWORK |
 
@@ -25,7 +25,7 @@
 
 export ORACLE_SID=BYTEWORK
 export ORACLE_BASE=/data/u01/app/oracle
-export ORACLE_HOME=/data/u01/app/oracle/product/19.0.0/dbhome_1
+export ORACLE_HOME=/data/u01/app/oracle/product/19.0.0/dbhome_19
 export ORACLE_HOSTNAME=PLVBIFDBD101
 export PATH=$PATH:$ORACLE_HOME/bin
 
@@ -170,7 +170,7 @@ catalog start with '/home/oracle/backup/BYTEWORK/YYYY-MM-DD';
 
 export ORACLE_SID=BYTEWORK
 export ORACLE_BASE=/data/u01/app/oracle
-export ORACLE_HOME=/data/u01/app/oracle/product/19.0.0/dbhome_1
+export ORACLE_HOME=/data/u01/app/oracle/product/19.0.0/dbhome_19
 export ORACLE_HOSTNAME=STANDBY_HOST
 export PATH=$PATH:$ORACLE_HOME/bin
 
