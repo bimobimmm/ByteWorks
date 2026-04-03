@@ -1,0 +1,298 @@
+# Oracle Active Data Guard (ADG) Configuration Guide
+
+## 1. Environment
+
+| Parameter            | Value |
+|---------------------|------|
+| ORACLE_SID          | BYTEWORK |
+| ORACLE_HOME         | /data/u01/app/oracle/product/19.0.0/dbhome_19 |
+| DB_UNIQUE_NAME (PRD)| ByteWorks |
+| DB_UNIQUE_NAME (STBY)| ByteWorks_standby |
+| Archive Location    | /data/archivelog/ByteWorks |
+
+---
+
+## 2. Network Configuration
+
+### 2.1 Primary - tnsnames.ora
+
+```ini
+BYTEWORK_PRIMARY =
+  (DESCRIPTION =
+    (ADDRESS = (PROTOCOL = TCP)(HOST = PRIMARY_IP)(PORT = 1521))
+    (CONNECT_DATA =
+      (SERVICE_NAME = BYTEWORK_PRIMARY)
+    )
+  )
+
+BYTEWORK_STANDBY =
+  (DESCRIPTION =
+    (ADDRESS = (PROTOCOL = TCP)(HOST = STANDBY_IP)(PORT = 1521))
+    (CONNECT_DATA =
+      (SERVICE_NAME = BYTEWORK_STANDBY)
+    )
+  )
+```
+
+---
+
+### 2.2 Standby - tnsnames.ora
+
+```ini
+BYTEWORK_PRIMARY =
+  (DESCRIPTION =
+    (ADDRESS = (PROTOCOL = TCP)(HOST = PRIMARY_IP)(PORT = 1521))
+    (CONNECT_DATA =
+      (SERVICE_NAME = BYTEWORK_PRIMARY)
+    )
+  )
+
+BYTEWORK_STANDBY =
+  (DESCRIPTION =
+    (ADDRESS = (PROTOCOL = TCP)(HOST = STANDBY_IP)(PORT = 1521))
+    (CONNECT_DATA =
+      (SERVER = DEDICATED)
+      (SERVICE_NAME = BYTEWORK_STANDBY)
+    )
+  )
+```
+
+---
+
+## 3. Listener Configuration
+
+### Primary
+
+```ini
+LISTENER_BYTEWORK =
+  (DESCRIPTION_LIST =
+    (DESCRIPTION =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = PRIMARY_IP)(PORT = 1521))
+    )
+  )
+
+SID_LIST_LISTENER_BYTEWORK =
+  (SID_LIST =
+    (SID_DESC =
+      (GLOBAL_DBNAME = BYTEWORK_PRIMARY)
+      (ORACLE_HOME = /data/u01/app/oracle/product/19.0.0/dbhome_19)
+      (SID_NAME = BYTEWORK)
+    )
+  )
+```
+
+---
+
+### Standby
+
+```ini
+LISTENER_BYTEWORK =
+  (DESCRIPTION_LIST =
+    (DESCRIPTION =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = STANDBY_IP)(PORT = 1521))
+    )
+  )
+
+SID_LIST_LISTENER_BYTEWORK =
+  (SID_LIST =
+    (SID_DESC =
+      (GLOBAL_DBNAME = BYTEWORK_STANDBY)
+      (ORACLE_HOME = /data/u01/app/oracle/product/19.0.0/dbhome_19)
+      (SID_NAME = BYTEWORK)
+    )
+  )
+```
+
+---
+
+## 4. Enable Archivelog Mode
+
+```sql
+ARCHIVE LOG LIST;
+SHUTDOWN IMMEDIATE;
+STARTUP MOUNT;
+ALTER DATABASE ARCHIVELOG;
+ALTER DATABASE OPEN;
+```
+
+---
+
+## 5. Set DB Unique Name
+
+### Primary
+
+```sql
+ALTER SYSTEM SET db_unique_name='ByteWorks' SCOPE=SPFILE;
+```
+
+### Standby
+
+```sql
+ALTER SYSTEM SET db_unique_name='ByteWorks_standby' SCOPE=SPFILE;
+```
+
+---
+
+## 6. Data Guard Parameter Configuration
+
+### Primary
+
+```sql
+ALTER SYSTEM SET LOG_ARCHIVE_CONFIG='DG_CONFIG=(ByteWorks,ByteWorks_standby)' SCOPE=BOTH;
+
+ALTER SYSTEM SET LOG_ARCHIVE_DEST_1=
+'LOCATION=/data/archivelog/ByteWorks VALID_FOR=(ALL_LOGFILES,ALL_ROLES) DB_UNIQUE_NAME=ByteWorks'
+SCOPE=BOTH;
+
+ALTER SYSTEM SET LOG_ARCHIVE_DEST_2=
+'SERVICE=BYTEWORK_STANDBY ASYNC VALID_FOR=(ONLINE_LOGFILES,PRIMARY_ROLE) DB_UNIQUE_NAME=ByteWorks_standby'
+SCOPE=BOTH;
+
+ALTER SYSTEM SET LOG_ARCHIVE_FORMAT='%t_%s_%r.arc' SCOPE=SPFILE;
+ALTER SYSTEM SET LOG_ARCHIVE_MAX_PROCESSES=4 SCOPE=BOTH;
+
+ALTER SYSTEM SET DB_FILE_NAME_CONVERT=
+'/data/oradata/ByteWorks_standby','/data/oradata/ByteWorks'
+SCOPE=SPFILE;
+
+ALTER SYSTEM SET LOG_FILE_NAME_CONVERT=
+'/data/oradata/ByteWorks_standby','/data/oradata/ByteWorks'
+SCOPE=SPFILE;
+
+ALTER SYSTEM SET STANDBY_FILE_MANAGEMENT=AUTO SCOPE=BOTH;
+ALTER SYSTEM SET FAL_SERVER=BYTEWORK_STANDBY SCOPE=BOTH;
+ALTER SYSTEM SET FAL_CLIENT=BYTEWORK_PRIMARY SCOPE=BOTH;
+ALTER SYSTEM SET REMOTE_LOGIN_PASSWORDFILE=EXCLUSIVE SCOPE=SPFILE;
+```
+
+---
+
+### Standby
+
+```sql
+ALTER SYSTEM SET LOG_ARCHIVE_CONFIG='DG_CONFIG=(ByteWorks,ByteWorks_standby)' SCOPE=BOTH;
+
+ALTER SYSTEM SET LOG_ARCHIVE_DEST_1=
+'LOCATION=/data/archivelog/ByteWorks VALID_FOR=(ALL_LOGFILES,ALL_ROLES) DB_UNIQUE_NAME=ByteWorks_standby'
+SCOPE=BOTH;
+
+ALTER SYSTEM SET LOG_ARCHIVE_DEST_2=
+'SERVICE=BYTEWORK_PRIMARY ASYNC VALID_FOR=(ONLINE_LOGFILES,PRIMARY_ROLE) DB_UNIQUE_NAME=ByteWorks'
+SCOPE=BOTH;
+
+ALTER SYSTEM SET LOG_ARCHIVE_FORMAT='%t_%s_%r.arc' SCOPE=SPFILE;
+ALTER SYSTEM SET LOG_ARCHIVE_MAX_PROCESSES=4 SCOPE=SPFILE;
+
+ALTER SYSTEM SET DB_FILE_NAME_CONVERT=
+'/data/oradata/ByteWorks','/data/oradata/ByteWorks_standby'
+SCOPE=SPFILE;
+
+ALTER SYSTEM SET LOG_FILE_NAME_CONVERT=
+'/data/oradata/ByteWorks','/data/oradata/ByteWorks_standby'
+SCOPE=SPFILE;
+
+ALTER SYSTEM SET STANDBY_FILE_MANAGEMENT=AUTO SCOPE=SPFILE;
+ALTER SYSTEM SET FAL_SERVER=BYTEWORK_PRIMARY SCOPE=SPFILE;
+ALTER SYSTEM SET FAL_CLIENT=BYTEWORK_STANDBY SCOPE=SPFILE;
+ALTER SYSTEM SET REMOTE_LOGIN_PASSWORDFILE=EXCLUSIVE SCOPE=SPFILE;
+```
+
+---
+
+## 7. Password File Configuration
+
+```bash
+orapwd file=$ORACLE_HOME/dbs/orapwBYTEWORK password=YourPassword force=y
+```
+
+### Copy to Standby
+
+```bash
+scp $ORACLE_HOME/dbs/orapwBYTEWORK oracle@STANDBY_IP:$ORACLE_HOME/dbs/
+```
+
+---
+
+## 8. Restore Standby (RMAN)
+
+```rman
+recover standby database from service BYTEWORK_PRIMARY;
+```
+
+---
+
+## 9. Open Standby Database
+
+```sql
+ALTER DATABASE OPEN READ ONLY;
+```
+
+---
+
+## 10. Enable Managed Recovery (MRP)
+
+```sql
+ALTER DATABASE RECOVER MANAGED STANDBY DATABASE DISCONNECT USING CURRENT LOGFILE;
+```
+
+---
+
+## 11. Validation
+
+### Check Database Role
+
+```sql
+SELECT NAME, OPEN_MODE, DATABASE_ROLE FROM V$DATABASE;
+```
+
+---
+
+### Check MRP Status
+
+```sql
+SELECT PROCESS, STATUS, THREAD#, SEQUENCE# FROM V$MANAGED_STANDBY;
+```
+
+---
+
+### Check Replication Lag
+
+```sql
+ALTER SESSION SET nls_date_format='DD-MM-YYYY HH24:MI:SS';
+
+SELECT A.THREAD#, B.LAST_SEQ, A.APPLIED_SEQ,
+       A.LAST_APP_TIMESTAMP,
+       B.LAST_SEQ-A.APPLIED_SEQ ARC_DIFF
+FROM
+(SELECT THREAD#, MAX(SEQUENCE#) APPLIED_SEQ, MAX(NEXT_TIME) LAST_APP_TIMESTAMP
+ FROM GV$ARCHIVED_LOG WHERE APPLIED='YES' GROUP BY THREAD#) A,
+(SELECT THREAD#, MAX(SEQUENCE#) LAST_SEQ FROM GV$ARCHIVED_LOG GROUP BY THREAD#) B
+WHERE A.THREAD#=B.THREAD#;
+```
+
+---
+
+## 12. Test Log Shipping
+
+```sql
+ALTER SYSTEM ARCHIVE LOG CURRENT;
+```
+
+---
+
+## 13. Enable Data Guard Broker (Optional)
+
+```sql
+ALTER SYSTEM SET DG_BROKER_START=TRUE;
+```
+
+---
+
+## Summary
+
+- Mode: Active Data Guard
+- Replication: Real-time apply
+- Archive Location: /data/archivelog/ByteWorks
+- Role:
+  - Primary: ByteWorks
+  - Standby: ByteWorks_standby
