@@ -1,17 +1,19 @@
-# 🛠️ Oracle RMAN Backup & Restore Guide (ByteWorks)
+# Oracle RMAN Backup & Restore Guide
 
-## 📌 Environment
+## 1. Environment
 
-- ORACLE_SID      : BYTEWORK  
-- ORACLE_HOME     : /data/u01/app/oracle/product/19.0.0/dbhome_1  
-- Backup Location : /home/oracle/backup/BYTEWORK  
-- Log Location    : /home/oracle/backup/log/BYTEWORK  
+| Parameter        | Value |
+|-----------------|------|
+| ORACLE_SID      | BYTEWORK |
+| ORACLE_HOME     | /data/u01/app/oracle/product/19.0.0/dbhome_1 |
+| Backup Location | /home/oracle/backup/BYTEWORK |
+| Log Location    | /home/oracle/backup/log/BYTEWORK |
 
 ---
 
-# 🔹 PART 1 — BACKUP DATABASE
+## 2. Backup Database
 
-## ⚙️ Script Backup
+### 2.1 Backup Script
 
 ```bash
 #!/bin/bash
@@ -71,7 +73,7 @@ fi
 
 ---
 
-## ▶️ Menjalankan Backup
+### 2.2 Execute Backup
 
 ```bash
 chmod +x backup.sh
@@ -80,7 +82,7 @@ chmod +x backup.sh
 
 ---
 
-## ⚠️ Jika Database Belum ARCHIVELOG
+### 2.3 Enable Archivelog (If Required)
 
 ```sql
 startup mount;
@@ -91,38 +93,42 @@ alter database open;
 
 ---
 
-## 📄 Generate PFILE
+### 2.4 Generate PFILE
 
 ```sql
 CREATE PFILE FROM SPFILE;
 ```
 
-Lokasi:
+Location:
 ```
 $ORACLE_HOME/dbs
 ```
 
 ---
 
-# 🔹 PART 2 — PREPARE RESTORE (PRIMARY → STANDBY)
+## 3. Prepare Restore (Primary to Standby)
 
-## 📦 Copy Backup
-
-```bash
-scp -r /home/oracle/backup/BYTEWORK/YYYY-MM-DD oracle@STANDBY_IP:/home/oracle/backup/BYTEWORK
-```
-
-## 📄 Copy PFILE
+### 3.1 Copy Backup
 
 ```bash
-scp $ORACLE_HOME/dbs/initBYTEWORK.ora oracle@STANDBY_IP:$ORACLE_HOME/dbs
+scp -r /home/oracle/backup/BYTEWORK/YYYY-MM-DD \
+oracle@STANDBY_IP:/home/oracle/backup/BYTEWORK
 ```
 
 ---
 
-# 🔹 PART 3 — PREPARE STANDBY
+### 3.2 Copy PFILE
 
-## 📂 Create Required Directory
+```bash
+scp $ORACLE_HOME/dbs/initBYTEWORK.ora \
+oracle@STANDBY_IP:$ORACLE_HOME/dbs
+```
+
+---
+
+## 4. Prepare Standby
+
+### 4.1 Create Required Directories
 
 ```bash
 mkdir -p /data/u01/app/oracle/admin/BYTEWORK/adump
@@ -131,7 +137,7 @@ mkdir -p /data/u01/app/oracle/recovery_area
 
 ---
 
-## ⚙️ Startup Nomount
+### 4.2 Startup Nomount
 
 ```sql
 startup nomount pfile='$ORACLE_HOME/dbs/initBYTEWORK.ora';
@@ -139,7 +145,7 @@ startup nomount pfile='$ORACLE_HOME/dbs/initBYTEWORK.ora';
 
 ---
 
-## 🔹 PART 4 — RESTORE CONTROLFILE
+## 5. Restore Controlfile
 
 ```rman
 restore controlfile from '/home/oracle/backup/BYTEWORK/YYYY-MM-DD/current_ctl_L0_*.bkp';
@@ -148,7 +154,7 @@ alter database mount;
 
 ---
 
-## 🔹 PART 5 — REGISTER BACKUP
+## 6. Register Backup
 
 ```rman
 crosscheck backup;
@@ -157,9 +163,9 @@ catalog start with '/home/oracle/backup/BYTEWORK/YYYY-MM-DD';
 
 ---
 
-# 🔹 PART 6 — SCRIPT RESTORE
+## 7. Restore Database
 
-## ⚙️ Restore Script
+### 7.1 Restore Script
 
 ```bash
 #!/bin/bash
@@ -195,7 +201,7 @@ fi
 
 ---
 
-## ▶️ Jalankan Restore
+### 7.2 Execute Restore
 
 ```bash
 chmod +x restore.sh
@@ -204,19 +210,18 @@ chmod +x restore.sh
 
 ---
 
-# 🔹 PART 7 — POST RESTORE
-
-## 🔧 Create SPFILE
+## 8. Post-Restore
 
 ```sql
 create spfile from pfile;
 create pfile from spfile;
 ```
 
-# ✅ SUMMARY
+---
 
-✔ Backup: RMAN Level 0 (Full)  
-✔ Include: DB + Archivelog + Controlfile  
-✔ Restore: Full restore + recover + resetlogs  
-✔ Environment: Consistent (BYTEWORK)
+## 9. Summary
 
+- Backup type: RMAN Incremental Level 0 (Full)
+- Components: Database, Archivelog, Controlfile
+- Restore method: Full restore with recovery and resetlogs
+- Environment: BYTEWORK
