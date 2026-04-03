@@ -3,35 +3,115 @@
 <p>Step 1 - Open DBCA dan Pilih Create Database</p>
 <img src="../images/instalation-db/1.png" width="600"/>
 
-<p>Step 2 - Pilih Advance Configuration</p>
-<img src="../images/instalation-db/2.png" width="600"/>
+# 🛠️ Oracle RMAN Backup Script (ByteWorks)
 
-<p>Step 3 - Pilih Custom Database</p>
-<img src="../images/instalation-db/3.png" width="600"/>
+## 📌 Overview
+Script ini digunakan untuk melakukan **full backup (incremental level 0)** database Oracle menggunakan RMAN.  
+Backup disimpan otomatis berdasarkan tanggal, termasuk:
+- Database
+- Archivelog
+- Controlfile (current & standby)
 
-<p>Step 4 - Masukan Global Database yang kamu inginkan, serta uncheck container (OPTIONAL) </p>
-<img src="../images/instalation-db/4.png" width="600"/>
+---
 
-<p>Step 5 - Pilih Use following for database storage attributes, database file location defaul / disesuaikan (OPTIONAL) </p>
-<img src="../images/instalation-db/5.png" width="600"/>
+## ⚙️ Script Backup
 
-<p>Step 6 - Pilih Enable Archiving, dan masukan tempat dimana archive akan disimpan dengan format .arc</p>
-<img src="../images/instalation-db/6.png" width="600"/>
+```bash
+#!/bin/bash
+# =============================================================
+# Oracle RMAN Backup Script with Auto-Dated Directory
+# Author  : bimoanggorojatii@gmail.com
+# Project : ByteWorks
+# =============================================================
 
-<p>Step 7 - Create listener baru, dengan nama yang diinginkan</p>
-<img src="../images/instalation-db/7.png" width="600"/>
+# --- Konfigurasi dasar environment ---
+export ORACLE_SID=BYTEWORK
+export ORACLE_BASE=/data/u01/app/oracle
+export ORACLE_HOME=/data/u01/app/oracle/product/19.0.0/dbhome_1
+export ORACLE_HOSTNAME=PLVBIFDBD101
+export PATH=$PATH:$ORACLE_HOME/bin
 
-<p>Step 8 - Checklist hanya pada JVM</p>
-<img src="../images/instalation-db/8.png" width="600"/>
+# --- Format tanggal ---
+DATE_DIR=$(date +%Y-%m-%d)
+DATETIME=$(date +%d%m%y_%H%M%S)
 
-<p>Step 9 - Pilih Use automatic shared memory</p>
-<img src="../images/instalation-db/9.png" width="600"/>
+# --- Direktori ---
+BACKUP_BASE="/home/oracle/backup/BYTEWORK"
+BACKUP_DIR="${BACKUP_BASE}/${DATE_DIR}"
+LOG_DIR="/home/oracle/backup/log/BYTEWORK"
 
-<p>Step 10 - Checklist OEM</p>
-<img src="../images/instalation-db/10.png" width="600"/>
+# --- Create directory ---
+mkdir -p "${BACKUP_DIR}"
+mkdir -p "${LOG_DIR}"
 
-<p>Step 11 - Use The same password </p>
-<img src="../images/instalation-db/11.png" width="600"/>
+echo "Backup started at $(date)"
 
-<p>Step 12 - Checklist Create database</p>
-<img src="../images/instalation-db/12.png" width="600"/>
+# --- RMAN Backup ---
+${ORACLE_HOME}/bin/rman target=/ log="${LOG_DIR}/backup_${DATETIME}.log" <<EOF
+run
+{
+  crosscheck backup;
+  crosscheck archivelog all;
+  delete noprompt expired archivelog all;
+  delete noprompt expired backup;
+
+  backup as compressed backupset incremental level 0 database
+    format '${BACKUP_DIR}/data_L0_%d_%s_%p_%c_%T.bkp';
+
+  backup as compressed backupset incremental level 0 archivelog all
+    format '${BACKUP_DIR}/arch_L0_%d_%s_%p_%c_%T.bak';
+
+  backup current controlfile for standby
+    format '${BACKUP_DIR}/standby_ctl_L0_%d_%s_%p_%c_%T.bkp';
+
+  backup current controlfile
+    format '${BACKUP_DIR}/current_ctl_L0_%d_%s_%p_%c_%T.bkp';
+}
+EXIT;
+EOF
+
+# --- Status ---
+if [ $? -eq 0 ]; then
+  echo "Backup SUCCESS at $(date)"
+else
+  echo "Backup FAILED at $(date)"
+fi
+```
+
+---
+
+## ▶️ Cara Menjalankan
+
+```bash
+chmod +x backup.sh
+./backup.sh
+```
+
+---
+
+## 📂 Output Backup
+
+- 📁 Backup Directory:
+```
+/home/oracle/backup/BYTEWORK/YYYY-MM-DD/
+```
+
+- 📄 Log File:
+```
+/home/oracle/backup/log/BYTEWORK/backup_TIMESTAMP.log
+```
+
+---
+
+## ⚠️ Notes
+
+- Menggunakan **incremental level 0 (full backup)**
+- Sudah termasuk:
+  - Database
+  - Archivelog
+  - Controlfile
+- Script otomatis:
+  - Crosscheck backup
+  - Hapus expired backup
+
+---
