@@ -75,19 +75,19 @@ scp /data/backup/controlfile/bytework_stby.ctl oracle@STANDBY:/data/oradata/Byte
 
 ---
 
-# PART 2 — NETWORK (PRIMARY & STANDBY)
+# PART 2 — NETWORK CONFIGURATION (JANGAN DIUBAH)
 
 ## 7. listener.ora
 
 ```ini
-LISTENER_BYTEWORK =
+LISTENER =
   (DESCRIPTION_LIST =
     (DESCRIPTION =
-      (ADDRESS = (PROTOCOL = TCP)(HOST = <HOSTNAME>)(PORT = 1521))
+      (ADDRESS = (PROTOCOL = TCP)(HOST = PRIMARY_HOST)(PORT = 1521))
     )
   )
 
-SID_LIST_LISTENER_BYTEWORK =
+SID_LIST_LISTENER =
   (SID_LIST =
     (SID_DESC =
       (GLOBAL_DBNAME = BYTEWORK_DGMGRL)
@@ -103,6 +103,14 @@ SID_LIST_LISTENER_BYTEWORK =
 
 ```ini
 BYTEWORK_PRIMARY =
+  (DESCRIPTION =
+    (ADDRESS = (PROTOCOL = TCP)(HOST = PRIMARY_HOST)(PORT = 1521))
+    (CONNECT_DATA =
+      (SERVICE_NAME = BYTEWORK)
+    )
+  )
+
+BYTEWORK_DGMGRL =
   (DESCRIPTION =
     (ADDRESS = (PROTOCOL = TCP)(HOST = PRIMARY_HOST)(PORT = 1521))
     (CONNECT_DATA =
@@ -198,7 +206,7 @@ ALTER DATABASE OPEN READ ONLY;
 
 # PART 4 — BROKER
 
-## 14. Create Broker Configuration
+## 14. Create Configuration
 
 ```bash
 dgmgrl sys@BYTEWORK_PRIMARY
@@ -227,7 +235,7 @@ EDIT DATABASE ByteWorks_standby SET STATE=APPLY-ON;
 
 ---
 
-# PART 5 — AUTO FAILOVER (FSFO)
+# PART 5 — AUTO FAILOVER
 
 ## 16. Configure FSFO
 
@@ -284,11 +292,11 @@ SHOW FAST_START FAILOVER;
 
 # SUMMARY
 
-- Active Data Guard dikonfigurasi menggunakan Data Guard Broker  
+- Standby database dibangun menggunakan RMAN restore from service  
+- Standby controlfile dibuat dari primary dan di-restore di standby  
+- Standby redo log dibuat di primary dan direcreate di standby untuk menghindari conflict  
+- Data Guard Broker digunakan untuk manajemen konfigurasi  
 - Replikasi menggunakan mode SYNC dengan protection MAXAVAILABILITY  
-- Standby database dibangun menggunakan RMAN (restore from service)  
-- Standby redo log dibuat di primary dan direcreate di standby untuk konsistensi  
-- Flashback database diaktifkan untuk mendukung failover & reinstate  
-- Fast-Start Failover (FSFO) diaktifkan untuk otomatisasi failover  
-- Observer dijalankan di server terpisah untuk memastikan high availability  
-- Sistem siap digunakan untuk kebutuhan production dengan high availability  
+- Fast-Start Failover (FSFO) diaktifkan untuk failover otomatis  
+- Observer dijalankan di server ke-3 untuk memastikan high availability  
+- Sistem siap digunakan untuk kebutuhan production environment  
