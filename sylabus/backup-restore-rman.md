@@ -1,9 +1,4 @@
-<h1>How To Backup Restore On Oracle 19C RMAN @ByteWorks</h1>
-
-<p>Step 1 - Open DBCA dan Pilih Create Database</p>
-<img src="../images/instalation-db/1.png" width="600"/>
-
-# 🛠️ Oracle RMAN Backup Script (ByteWorks)
+# 🛠️ How To Backup Restore Oracle RMAN (ByteWorks)
 
 ## 📌 Overview
 Script ini digunakan untuk melakukan **full backup (incremental level 0)** database Oracle menggunakan RMAN.  
