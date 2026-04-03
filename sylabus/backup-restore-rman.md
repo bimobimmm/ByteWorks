@@ -109,15 +109,13 @@ $ORACLE_HOME/dbs
 ## 📦 Copy Backup
 
 ```bash
-scp -r /home/oracle/backup/BYTEWORK/YYYY-MM-DD \
-oracle@STANDBY_IP:/home/oracle/backup/BYTEWORK
+scp -r /home/oracle/backup/BYTEWORK/YYYY-MM-DD oracle@STANDBY_IP:/home/oracle/backup/BYTEWORK
 ```
 
 ## 📄 Copy PFILE
 
 ```bash
-scp $ORACLE_HOME/dbs/initBYTEWORK.ora \
-oracle@STANDBY_IP:$ORACLE_HOME/dbs
+scp $ORACLE_HOME/dbs/initBYTEWORK.ora oracle@STANDBY_IP:$ORACLE_HOME/dbs
 ```
 
 ---
@@ -215,16 +213,6 @@ create spfile from pfile;
 create pfile from spfile;
 ```
 
----
-
-## ⚙️ Set DB Unique Name
-
-```sql
-alter system set db_unique_name='BYTEWORK_STBY' scope=spfile;
-```
-
----
-
 # ✅ SUMMARY
 
 ✔ Backup: RMAN Level 0 (Full)  
@@ -232,11 +220,3 @@ alter system set db_unique_name='BYTEWORK_STBY' scope=spfile;
 ✔ Restore: Full restore + recover + resetlogs  
 ✔ Environment: Consistent (BYTEWORK)
 
----
-
-# 🚀 NEXT IMPROVEMENT
-
-- Setup cronjob automation
-- Email alert (success / failed)
-- Data Guard configuration
-- Monitoring tablespace & backup size
