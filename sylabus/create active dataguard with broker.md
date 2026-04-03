@@ -58,13 +58,86 @@ ALTER DATABASE FLASHBACK ON;
 
 ---
 
-## 6. Network Configuration
+## 6. Listener Configuration
 
-(Listener & TNS — tetap seperti sebelumnya)
+### Primary - listener.ora
+
+```ini
+LISTENER_BYTEWORK =
+  (DESCRIPTION_LIST =
+    (DESCRIPTION =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = PRIMARY_HOST)(PORT = 1521))
+    )
+  )
+
+SID_LIST_LISTENER_BYTEWORK =
+  (SID_LIST =
+    (SID_DESC =
+      (GLOBAL_DBNAME = BYTEWORK_DGMGRL)
+      (ORACLE_HOME = /data/u01/app/oracle/product/19.0.0/dbhome_19)
+      (SID_NAME = BYTEWORK)
+    )
+  )
+```
 
 ---
 
-## 7. Prepare Standby
+### Standby - listener.ora
+
+```ini
+LISTENER_BYTEWORK =
+  (DESCRIPTION_LIST =
+    (DESCRIPTION =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = STANDBY_HOST)(PORT = 1521))
+    )
+  )
+
+SID_LIST_LISTENER_BYTEWORK =
+  (SID_LIST =
+    (SID_DESC =
+      (GLOBAL_DBNAME = BYTEWORK_STANDBY_DGMGRL)
+      (ORACLE_HOME = /data/u01/app/oracle/product/19.0.0/dbhome_19)
+      (SID_NAME = BYTEWORK)
+    )
+  )
+```
+
+---
+
+## 7. TNS Configuration (Both Server)
+
+```ini
+BYTEWORK_PRIMARY =
+  (DESCRIPTION =
+    (ADDRESS = (PROTOCOL = TCP)(HOST = PRIMARY_HOST)(PORT = 1521))
+    (CONNECT_DATA =
+      (SERVER = DEDICATED)
+      (SERVICE_NAME = BYTEWORK)
+    )
+  )
+
+BYTEWORK_DGMGRL =
+  (DESCRIPTION =
+    (ADDRESS = (PROTOCOL = TCP)(HOST = PRIMARY_HOST)(PORT = 1521))
+    (CONNECT_DATA =
+      (SERVER = DEDICATED)
+      (SERVICE_NAME = BYTEWORK)
+    )
+  )
+
+BYTEWORK_STANDBY =
+  (DESCRIPTION =
+    (ADDRESS = (PROTOCOL = TCP)(HOST = STANDBY_HOST)(PORT = 1521))
+    (CONNECT_DATA =
+      (SERVER = DEDICATED)
+      (SERVICE_NAME = BYTEWORK_STANDBY)
+    )
+  )
+```
+
+---
+
+## 8. Prepare Standby
 
 ```sql
 ALTER SYSTEM SET db_unique_name='ByteWorks_standby' SCOPE=SPFILE;
@@ -72,15 +145,11 @@ ALTER SYSTEM SET db_unique_name='ByteWorks_standby' SCOPE=SPFILE;
 
 ---
 
-## 8. Create & Transfer Standby Controlfile
-
-### Primary
+## 9. Create & Transfer Standby Controlfile
 
 ```sql
 ALTER DATABASE CREATE STANDBY CONTROLFILE AS '/data/backup/controlfile/bytework_stby.ctl';
 ```
-
-### Copy ke Standby
 
 ```bash
 scp /data/backup/controlfile/bytework_stby.ctl oracle@STANDBY:/data/oradata/ByteWorks_standby/
@@ -88,33 +157,16 @@ scp /data/backup/controlfile/bytework_stby.ctl oracle@STANDBY:/data/oradata/Byte
 
 ---
 
-## 9. Restore Standby Controlfile (WAJIB)
-
-### Stop standby database
+## 10. Restore Standby Controlfile
 
 ```sql
 SHUTDOWN IMMEDIATE;
-```
-
----
-
-### Start NOMOUNT
-
-```sql
 STARTUP NOMOUNT;
 ```
-
----
-
-### Restore Controlfile
 
 ```rman
 RESTORE STANDBY CONTROLFILE FROM '/data/oradata/ByteWorks_standby/bytework_stby.ctl';
 ```
-
----
-
-### Mount database
 
 ```sql
 ALTER DATABASE MOUNT;
@@ -122,7 +174,7 @@ ALTER DATABASE MOUNT;
 
 ---
 
-## 10. Restore Database (Standby)
+## 11. Restore Database
 
 ```bash
 $ORACLE_HOME/bin/rman target / <<EOF
@@ -140,7 +192,7 @@ EOF
 
 ---
 
-## 11. Recreate Standby Redo Log (Standby)
+## 12. Recreate Standby Redo Log (Standby)
 
 ```sql
 ALTER SYSTEM SET standby_file_management=MANUAL SCOPE=BOTH;
@@ -158,7 +210,7 @@ ALTER SYSTEM SET standby_file_management=AUTO SCOPE=BOTH;
 
 ---
 
-## 12. Open Standby
+## 13. Open Standby
 
 ```sql
 ALTER DATABASE OPEN READ ONLY;
@@ -166,7 +218,7 @@ ALTER DATABASE OPEN READ ONLY;
 
 ---
 
-## 13. Data Guard Broker Configuration
+## 14. Broker Configuration
 
 ```bash
 dgmgrl sys@BYTEWORK_PRIMARY
@@ -187,7 +239,7 @@ ENABLE DATABASE ByteWorks_standby;
 
 ---
 
-## 14. Enable Apply
+## 15. Enable Apply
 
 ```sql
 EDIT DATABASE ByteWorks_standby SET STATE=APPLY-ON;
@@ -195,7 +247,7 @@ EDIT DATABASE ByteWorks_standby SET STATE=APPLY-ON;
 
 ---
 
-## 15. Auto Failover Configuration
+## 16. Auto Failover Configuration
 
 ```sql
 EDIT DATABASE ByteWorks SET PROPERTY LogXptMode='SYNC';
@@ -219,7 +271,7 @@ ENABLE FAST_START FAILOVER;
 
 ---
 
-## 16. Start Observer
+## 17. Start Observer
 
 ```sql
 START OBSERVER;
@@ -227,7 +279,7 @@ START OBSERVER;
 
 ---
 
-## 17. Validation
+## 18. Validation
 
 ```sql
 SHOW CONFIGURATION;
@@ -240,7 +292,7 @@ SHOW FAST_START FAILOVER;
 
 ## Summary
 
-- Controlfile wajib di-restore sebelum RMAN restore database  
-- Standby harus dalam kondisi MOUNT sebelum restore  
+- Listener & TNS harus konsisten antar primary dan standby  
+- Standby controlfile wajib di-restore sebelum RMAN  
 - Broker + FSFO memastikan failover otomatis  
-- Setup ini sudah production-ready  
+- Setup ini production-ready  
