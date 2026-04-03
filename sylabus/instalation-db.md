@@ -1,5 +1,5 @@
-# How To Create Database On Oracle 19C
+<h1>How To Create Database On Oracle 19C</h1>
 
-## Step 1 - Open DBCA
-Pilih Create Database
-![DBCA](../images/instalation-db/1.png)
+<h2>Step 1 - Open DBCA</h2>
+
+<img src="../images/instalation-db/1.png" width="600"/>
