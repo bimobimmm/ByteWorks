@@ -12,7 +12,9 @@
 
 ---
 
-## 2. Create Standby Redo Log (Primary)
+# PART 1 — PRIMARY SERVER
+
+## 2. Create Standby Redo Log
 
 ```sql
 ALTER DATABASE ADD STANDBY LOGFILE THREAD 1 GROUP 10 '/data/oradata/ByteWorks/redo10.log' SIZE 200M;
@@ -23,7 +25,7 @@ ALTER DATABASE ADD STANDBY LOGFILE THREAD 1 GROUP 13 '/data/oradata/ByteWorks/re
 
 ---
 
-## 3. Primary Configuration
+## 3. Database Configuration
 
 ```sql
 ALTER SYSTEM SET dg_broker_start=TRUE SCOPE=BOTH;
@@ -47,26 +49,41 @@ STARTUP;
 
 ---
 
-## 5. Flashback Configuration
+## 5. Flashback & Logging
 
 ```sql
 ALTER SYSTEM SET db_flashback_retention_target=30;
 ALTER DATABASE FORCE LOGGING;
-SELECT FLASHBACK_ON FROM V$DATABASE;
 ALTER DATABASE FLASHBACK ON;
 ```
 
 ---
 
-## 6. Listener Configuration
+## 6. Create Standby Controlfile
 
-### Primary
+```sql
+ALTER DATABASE CREATE STANDBY CONTROLFILE AS '/data/backup/controlfile/bytework_stby.ctl';
+```
+
+---
+
+## 7. Transfer Controlfile
+
+```bash
+scp /data/backup/controlfile/bytework_stby.ctl oracle@STANDBY:/data/oradata/ByteWorks_standby/
+```
+
+---
+
+# PART 2 — NETWORK (PRIMARY & STANDBY)
+
+## 8. listener.ora
 
 ```ini
 LISTENER_BYTEWORK =
   (DESCRIPTION_LIST =
     (DESCRIPTION =
-      (ADDRESS = (PROTOCOL = TCP)(HOST = PRIMARY_HOST)(PORT = 1521))
+      (ADDRESS = (PROTOCOL = TCP)(HOST = <HOSTNAME>)(PORT = 1521))
     )
   )
 
@@ -82,45 +99,13 @@ SID_LIST_LISTENER_BYTEWORK =
 
 ---
 
-### Standby
-
-```ini
-LISTENER_BYTEWORK =
-  (DESCRIPTION_LIST =
-    (DESCRIPTION =
-      (ADDRESS = (PROTOCOL = TCP)(HOST = STANDBY_HOST)(PORT = 1521))
-    )
-  )
-
-SID_LIST_LISTENER_BYTEWORK =
-  (SID_LIST =
-    (SID_DESC =
-      (GLOBAL_DBNAME = BYTEWORK_STANDBY_DGMGRL)
-      (ORACLE_HOME = /data/u01/app/oracle/product/19.0.0/dbhome_19)
-      (SID_NAME = BYTEWORK)
-    )
-  )
-```
-
----
-
-## 7. TNS Configuration (Both Server)
+## 9. tnsnames.ora
 
 ```ini
 BYTEWORK_PRIMARY =
   (DESCRIPTION =
     (ADDRESS = (PROTOCOL = TCP)(HOST = PRIMARY_HOST)(PORT = 1521))
     (CONNECT_DATA =
-      (SERVER = DEDICATED)
-      (SERVICE_NAME = BYTEWORK)
-    )
-  )
-
-BYTEWORK_DGMGRL =
-  (DESCRIPTION =
-    (ADDRESS = (PROTOCOL = TCP)(HOST = PRIMARY_HOST)(PORT = 1521))
-    (CONNECT_DATA =
-      (SERVER = DEDICATED)
       (SERVICE_NAME = BYTEWORK)
     )
   )
@@ -129,7 +114,6 @@ BYTEWORK_STANDBY =
   (DESCRIPTION =
     (ADDRESS = (PROTOCOL = TCP)(HOST = STANDBY_HOST)(PORT = 1521))
     (CONNECT_DATA =
-      (SERVER = DEDICATED)
       (SERVICE_NAME = BYTEWORK_STANDBY)
     )
   )
@@ -137,7 +121,9 @@ BYTEWORK_STANDBY =
 
 ---
 
-## 8. Prepare Standby
+# PART 3 — STANDBY SERVER
+
+## 10. Set DB Unique Name
 
 ```sql
 ALTER SYSTEM SET db_unique_name='ByteWorks_standby' SCOPE=SPFILE;
@@ -145,19 +131,7 @@ ALTER SYSTEM SET db_unique_name='ByteWorks_standby' SCOPE=SPFILE;
 
 ---
 
-## 9. Create & Transfer Standby Controlfile
-
-```sql
-ALTER DATABASE CREATE STANDBY CONTROLFILE AS '/data/backup/controlfile/bytework_stby.ctl';
-```
-
-```bash
-scp /data/backup/controlfile/bytework_stby.ctl oracle@STANDBY:/data/oradata/ByteWorks_standby/
-```
-
----
-
-## 10. Restore Standby Controlfile
+## 11. Restore Controlfile
 
 ```sql
 SHUTDOWN IMMEDIATE;
@@ -174,7 +148,7 @@ ALTER DATABASE MOUNT;
 
 ---
 
-## 11. Restore Database (Active Duplicate)
+## 12. Restore Database
 
 ```bash
 $ORACLE_HOME/bin/rman target / <<EOF
@@ -192,14 +166,10 @@ EOF
 
 ---
 
-## 12. Recreate Standby Redo Log (Standby)
+## 13. Standby Redo Log (Standby)
 
 ```sql
 ALTER SYSTEM SET standby_file_management=MANUAL SCOPE=BOTH;
-
-ALTER DATABASE DROP STANDBY LOGFILE GROUP 10;
-ALTER DATABASE DROP STANDBY LOGFILE GROUP 11;
-ALTER DATABASE DROP STANDBY LOGFILE GROUP 12;
 
 ALTER DATABASE ADD STANDBY LOGFILE THREAD 1 GROUP 10 '/data/oradata/ByteWorks_standby/redo10.log' SIZE 200M;
 ALTER DATABASE ADD STANDBY LOGFILE THREAD 1 GROUP 11 '/data/oradata/ByteWorks_standby/redo11.log' SIZE 200M;
@@ -210,7 +180,7 @@ ALTER SYSTEM SET standby_file_management=AUTO SCOPE=BOTH;
 
 ---
 
-## 13. Open Standby
+## 14. Open Standby
 
 ```sql
 ALTER DATABASE OPEN READ ONLY;
@@ -218,7 +188,9 @@ ALTER DATABASE OPEN READ ONLY;
 
 ---
 
-## 14. Data Guard Broker Configuration
+# PART 4 — BROKER CONFIGURATION
+
+## 15. Configure Broker
 
 ```bash
 dgmgrl sys@BYTEWORK_PRIMARY
@@ -239,7 +211,7 @@ ENABLE DATABASE ByteWorks_standby;
 
 ---
 
-## 15. Enable Apply
+## 16. Enable Apply
 
 ```sql
 EDIT DATABASE ByteWorks_standby SET STATE=APPLY-ON;
@@ -247,31 +219,27 @@ EDIT DATABASE ByteWorks_standby SET STATE=APPLY-ON;
 
 ---
 
-## 16. Auto Failover Configuration
+# PART 5 — AUTO FAILOVER
+
+## 17. FSFO Configuration
 
 ```sql
 EDIT DATABASE ByteWorks SET PROPERTY LogXptMode='SYNC';
-EDIT DATABASE ByteWorks SET PROPERTY Binding='MANDATORY';
-
 EDIT DATABASE ByteWorks_standby SET PROPERTY LogXptMode='SYNC';
-EDIT DATABASE ByteWorks_standby SET PROPERTY Binding='MANDATORY';
 
 EDIT DATABASE ByteWorks SET PROPERTY FastStartFailoverTarget='ByteWorks_standby';
 EDIT DATABASE ByteWorks_standby SET PROPERTY FastStartFailoverTarget='ByteWorks';
 
 EDIT CONFIGURATION SET PROTECTION MODE AS MAXAVAILABILITY;
 
-EDIT CONFIGURATION SET PROPERTY FastStartFailoverThreshold=30;
-EDIT CONFIGURATION SET PROPERTY FastStartFailoverLagLimit=30;
-EDIT CONFIGURATION SET PROPERTY FastStartFailoverAutoReinstate=TRUE;
-EDIT CONFIGURATION SET PROPERTY ObserverReconnect=15;
-
 ENABLE FAST_START FAILOVER;
 ```
 
 ---
 
-## 17. Start Observer (Server ke-3)
+# PART 6 — OBSERVER (SERVER KE-3)
+
+## 18. Start Observer
 
 ```bash
 dgmgrl sys@BYTEWORK_PRIMARY
@@ -287,7 +255,7 @@ CONNECT IDENTIFIER IS BYTEWORK_PRIMARY;
 
 ---
 
-## 18. Validation
+# PART 7 — VALIDATION
 
 ```sql
 SHOW CONFIGURATION;
@@ -300,8 +268,6 @@ SHOW FAST_START FAILOVER;
 
 ## Summary
 
-- Standby controlfile wajib di-restore sebelum database restore  
-- Standby redo log wajib ada di primary & standby  
-- Broker mempermudah management ADG  
-- Observer wajib untuk auto failover  
-- Setup ini production-ready (enterprise level)  
+- Script dipisah berdasarkan role server  
+- Lebih mudah dibaca dan diikuti saat eksekusi  
+- Cocok untuk runbook production  
