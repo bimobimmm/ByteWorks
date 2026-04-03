@@ -8,6 +8,6 @@
 <p>Pilih Advance Configuration</p>
 <img src="../images/instalation-db/2.png" width="600"/>
 
-<h2>Step 3 - Open DBCA</h2>
-<p>Pilih Create Database</p>
+<h2>Step 3 - Custom Database</h2>
+<p>Pilih Custom Database</p>
 <img src="../images/instalation-db/3.png" width="600"/>
