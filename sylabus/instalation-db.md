@@ -6,4 +6,4 @@
 
 <h2>Step 2 - Advance Configuration (OPTIONAL)</h2>
 <p>Pilih Create Database</p>
-<img src="../images/instalation-db/1.png" width="600"/>
+<img src="../images/instalation-db/2.png" width="600"/>
