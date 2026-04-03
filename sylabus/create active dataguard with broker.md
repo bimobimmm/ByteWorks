@@ -60,7 +60,7 @@ ALTER DATABASE FLASHBACK ON;
 
 ## 6. Listener Configuration
 
-### Primary - listener.ora
+### Primary
 
 ```ini
 LISTENER_BYTEWORK =
@@ -82,7 +82,7 @@ SID_LIST_LISTENER_BYTEWORK =
 
 ---
 
-### Standby - listener.ora
+### Standby
 
 ```ini
 LISTENER_BYTEWORK =
@@ -174,7 +174,7 @@ ALTER DATABASE MOUNT;
 
 ---
 
-## 11. Restore Database
+## 11. Restore Database (Active Duplicate)
 
 ```bash
 $ORACLE_HOME/bin/rman target / <<EOF
@@ -218,7 +218,7 @@ ALTER DATABASE OPEN READ ONLY;
 
 ---
 
-## 14. Broker Configuration
+## 14. Data Guard Broker Configuration
 
 ```bash
 dgmgrl sys@BYTEWORK_PRIMARY
@@ -271,10 +271,18 @@ ENABLE FAST_START FAILOVER;
 
 ---
 
-## 17. Start Observer
+## 17. Start Observer (Server ke-3)
+
+```bash
+dgmgrl sys@BYTEWORK_PRIMARY
+```
 
 ```sql
-START OBSERVER;
+START OBSERVER BYTEWORK_OBS 
+IN BACKGROUND 
+FILE IS '/data/observer/bytework/bytework.dat' 
+LOGFILE IS '/data/observer/bytework/bytework.log' 
+CONNECT IDENTIFIER IS BYTEWORK_PRIMARY;
 ```
 
 ---
@@ -292,7 +300,8 @@ SHOW FAST_START FAILOVER;
 
 ## Summary
 
-- Listener & TNS harus konsisten antar primary dan standby  
-- Standby controlfile wajib di-restore sebelum RMAN  
-- Broker + FSFO memastikan failover otomatis  
-- Setup ini production-ready  
+- Standby controlfile wajib di-restore sebelum database restore  
+- Standby redo log wajib ada di primary & standby  
+- Broker mempermudah management ADG  
+- Observer wajib untuk auto failover  
+- Setup ini production-ready (enterprise level)  
