@@ -15,5 +15,5 @@
 <p>Step 5 - Pilih Use following for database storage attributes, database file location defaul / disesuaikan (OPTIONAL) </p>
 <img src="../images/instalation-db/5.png" width="600"/>
 
-<p>Step 6 - Pilih Custom Database</p>
+<p>Step 6 - Pilih Enable Archiving, dan masukan tempat dimana archive akan disimpan dengan format .arc</p>
 <img src="../images/instalation-db/6.png" width="600"/>
