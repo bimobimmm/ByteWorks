@@ -111,8 +111,7 @@ $ORACLE_HOME/dbs
 ### 3.1 Copy Backup
 
 ```bash
-scp -r /home/oracle/backup/BYTEWORK/YYYY-MM-DD \
-oracle@STANDBY_IP:/home/oracle/backup/BYTEWORK
+scp -r /home/oracle/backup/BYTEWORK/YYYY-MM-DD oracle@STANDBY_IP:/home/oracle/backup/BYTEWORK
 ```
 
 ---
@@ -120,8 +119,7 @@ oracle@STANDBY_IP:/home/oracle/backup/BYTEWORK
 ### 3.2 Copy PFILE
 
 ```bash
-scp $ORACLE_HOME/dbs/initBYTEWORK.ora \
-oracle@STANDBY_IP:$ORACLE_HOME/dbs
+scp $ORACLE_HOME/dbs/initBYTEWORK.ora oracle@STANDBY_IP:$ORACLE_HOME/dbs
 ```
 
 ---
