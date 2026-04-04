@@ -1,24 +1,30 @@
 # ByteWorks — Oracle Syllabus
 
-## Overview
-This repository is a curated collection of practical guides, designed as a personal knowledge base and structured learning material in the field of Oracle Database.
-
-Each document represents a hands-on approach, capturing real-world implementation steps, configurations, and operational insights.
-
----
-
-## Purpose
-The purpose of this repository is to:
-
-- Document practical how-to guides for Oracle Database  
-- Serve as a continuous learning reference  
-- Preserve knowledge gained through real experience  
-- Provide a structured path for both self-study and professional development  
+<p align="center">
+  <i>A curated collection of practical Oracle Database knowledge</i>
+</p>
 
 ---
 
-## Contents
-This syllabus includes topics such as:
+## ✦ Overview
+This repository serves as a refined collection of practical guides, carefully structured as both a personal knowledge base and a continuous learning resource in Oracle Database.
+
+Each document reflects real-world implementation, focusing on clarity, precision, and usability.
+
+---
+
+## ✦ Purpose
+Designed with intention, this repository aims to:
+
+- Capture and document practical how-to knowledge  
+- Provide a reliable learning reference  
+- Preserve hands-on experience in a structured form  
+- Support continuous growth in Oracle Database expertise  
+
+---
+
+## ✦ Contents
+A structured syllabus covering:
 
 - Oracle Database Installation  
 - Backup & Restore (RMAN)  
@@ -28,20 +34,22 @@ This syllabus includes topics such as:
 
 ---
 
-## Philosophy
-This repository is built on a simple principle:
-
-> "Well-documented knowledge is as valuable as the knowledge itself."
-
----
-
-## Notes
-- All materials are written with clarity and practical usability in mind  
-- Focused on real implementation rather than theory alone  
-- Continuously updated as experience grows  
+## ✦ Philosophy
+<p align="center">
+  <i>"Well-documented knowledge is as valuable as the knowledge itself."</i>
+</p>
 
 ---
 
-## Author
-noxiousroots  
-@ByteWorks
+## ✦ Notes
+<p align="center">
+  Crafted with clarity, refined through experience, and continuously evolving.
+</p>
+
+---
+
+## ✦ Author
+<p align="center">
+  <b>noxiousroots</b><br>
+  <sub>@ByteWorks</sub>
+</p>
