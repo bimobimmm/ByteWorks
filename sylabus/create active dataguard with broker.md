@@ -75,8 +75,7 @@ scp /data/backup/controlfile/bytework_stby.ctl oracle@STANDBY:/data/oradata/Byte
 
 ---
 
-# PART 2 — NETWORK CONFIGURATION (JANGAN DIUBAH)
-
+# PART 2 — NETWORK CONFIGURATION
 ## 7. listener.ora
 
 ```ini
