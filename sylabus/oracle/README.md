@@ -4,7 +4,7 @@
 
 ---
 
-## ✦ Overview
+### ✦ Overview
 > This repository serves as a refined collection of practical guides,  
 > carefully structured as both a personal knowledge base and a continuous  
 > learning resource in Oracle Database.  
@@ -14,7 +14,7 @@
 
 ---
 
-## ✦ Purpose
+### ✦ Purpose
 > • Document practical Oracle Database how-to guides  
 > • Provide a reliable and structured learning reference  
 > • Preserve hands-on experience and real-world practices  
@@ -22,7 +22,7 @@
 
 ---
 
-## ✦ Contents
+### ✦ Contents
 > • Oracle Database Installation  
 > • Backup & Restore (RMAN)  
 > • Oracle RAC Configuration  
@@ -31,17 +31,17 @@
 
 ---
 
-## ✦ Philosophy
+### ✦ Philosophy
 > "Well-documented knowledge is as valuable as the knowledge itself."
 
 ---
 
-## ✦ Notes
+### ✦ Notes
 > Crafted with clarity, refined through experience,  
 > and continuously evolving.
 
 ---
 
-## ✦ Author
+### ✦ Author
 noxiousroots  
 @ByteWorks
