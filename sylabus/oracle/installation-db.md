@@ -11,7 +11,7 @@ Panduan ini menjelaskan langkah-langkah pembuatan database menggunakan DBCA pada
 Pilih **Create Database**.
 
 <p align="center">
-  <img src="../images/instalation-db/1.png" width="600"/>
+  <img src="../../images/instalation-db/1.png" width="600"/>
 </p>
 
 ---
@@ -20,7 +20,7 @@ Pilih **Create Database**.
 Pilih **Advanced Configuration**.
 
 <p align="center">
-  <img src="../images/instalation-db/2.png" width="600"/>
+  <img src="../../images/instalation-db/2.png" width="600"/>
 </p>
 
 ---
@@ -29,7 +29,7 @@ Pilih **Advanced Configuration**.
 Pilih **Custom Database**.
 
 <p align="center">
-  <img src="../images/instalation-db/3.png" width="600"/>
+  <img src="../../images/instalation-db/3.png" width="600"/>
 </p>
 
 ---
@@ -39,7 +39,7 @@ Masukkan nama database sesuai kebutuhan.
 (Opsi: uncheck container database jika tidak digunakan)
 
 <p align="center">
-  <img src="../images/instalation-db/4.png" width="600"/>
+  <img src="../../images/instalation-db/4.png" width="600"/>
 </p>
 
 ---
@@ -49,7 +49,7 @@ Pilih **Use following for database storage attributes**.
 Lokasi file database dapat menggunakan default atau disesuaikan.
 
 <p align="center">
-  <img src="../images/instalation-db/5.png" width="600"/>
+  <img src="../../images/instalation-db/5.png" width="600"/>
 </p>
 
 ---
@@ -58,7 +58,7 @@ Lokasi file database dapat menggunakan default atau disesuaikan.
 Aktifkan **Enable Archiving** dan tentukan lokasi penyimpanan archive log.
 
 <p align="center">
-  <img src="../images/instalation-db/6.png" width="600"/>
+  <img src="../../images/instalation-db/6.png" width="600"/>
 </p>
 
 ---
@@ -67,7 +67,7 @@ Aktifkan **Enable Archiving** dan tentukan lokasi penyimpanan archive log.
 Buat listener baru sesuai kebutuhan.
 
 <p align="center">
-  <img src="../images/instalation-db/7.png" width="600"/>
+  <img src="../../images/instalation-db/7.png" width="600"/>
 </p>
 
 ---
@@ -76,7 +76,7 @@ Buat listener baru sesuai kebutuhan.
 Pilih hanya **JVM**.
 
 <p align="center">
-  <img src="../images/instalation-db/8.png" width="600"/>
+  <img src="../../images/instalation-db/8.png" width="600"/>
 </p>
 
 ---
@@ -85,7 +85,7 @@ Pilih hanya **JVM**.
 Pilih **Use Automatic Shared Memory Management**.
 
 <p align="center">
-  <img src="../images/instalation-db/9.png" width="600"/>
+  <img src="../../images/instalation-db/9.png" width="600"/>
 </p>
 
 ---
@@ -94,7 +94,7 @@ Pilih **Use Automatic Shared Memory Management**.
 Aktifkan **Oracle Enterprise Manager (OEM)**.
 
 <p align="center">
-  <img src="../images/instalation-db/10.png" width="600"/>
+  <img src="../../images/instalation-db/10.png" width="600"/>
 </p>
 
 ---
@@ -103,7 +103,7 @@ Aktifkan **Oracle Enterprise Manager (OEM)**.
 Gunakan opsi **Use the same password for all accounts**.
 
 <p align="center">
-  <img src="../images/instalation-db/11.png" width="600"/>
+  <img src="../../images/instalation-db/11.png" width="600"/>
 </p>
 
 ---
@@ -112,5 +112,5 @@ Gunakan opsi **Use the same password for all accounts**.
 Checklist **Create Database** dan lanjutkan proses.
 
 <p align="center">
-  <img src="../images/instalation-db/12.png" width="600"/>
+  <img src="../../images/instalation-db/12.png" width="600"/>
 </p>
