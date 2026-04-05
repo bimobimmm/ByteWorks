@@ -98,4 +98,42 @@ df -h
 - Setiap langkah diawali dengan validasi untuk menghindari kesalahan penghapusan  
 - Retention digunakan sebagai acuan dalam menentukan file yang akan dibersihkan  
 - Metode ini fleksibel dan dapat digunakan di berbagai environment Oracle  
-- Aman digunakan untuk kebutuhan production system  
+- Aman digunakan untuk kebutuhan production system
+
+### File Description
+
+#### Audit File (.aud)
+File audit digunakan untuk mencatat aktivitas user di dalam database,
+seperti login, logout, dan eksekusi perintah tertentu yang diawasi.
+
+File ini biasanya tersimpan di direktori `adump` dan akan terus bertambah
+seiring dengan aktivitas database, terutama jika fitur auditing diaktifkan.
+
+---
+
+#### Trace File (.trc)
+File trace berisi informasi detail terkait proses internal database,
+biasanya digunakan untuk keperluan troubleshooting dan analisis error.
+
+File ini dihasilkan secara otomatis ketika terjadi masalah, seperti
+session error, query bermasalah, atau proses background tertentu.
+
+---
+
+#### Log File (.log)
+File log mencatat aktivitas operasional database, termasuk event penting,
+status sistem, dan informasi runtime lainnya.
+
+Salah satu contoh utama adalah alert log yang berisi informasi penting
+seperti startup, shutdown, dan error database.
+
+---
+
+### Notes
+
+File `.aud`, `.trc`, dan `.log` tidak termasuk dalam komponen utama
+database sehingga aman untuk dilakukan housekeeping selama masih
+memperhatikan kebutuhan troubleshooting dan audit.
+
+Namun, penghapusan tetap harus dilakukan dengan hati-hati dan berdasarkan
+retention policy yang sesuai.
