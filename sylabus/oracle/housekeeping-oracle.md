@@ -92,19 +92,6 @@ du -sh .
 df -h
 ```
 
----
-
-### Optional
-
-#### 10. Compress Before Deletion
-Melakukan kompresi file lama sebagai alternatif sebelum dilakukan penghapusan.
-
-```bash
-find . -type f -mtime +3 -exec gzip {} \;
-```
-
----
-
 ## Summary
 
 - Housekeeping dilakukan secara manual untuk memastikan kontrol penuh terhadap sistem  
