@@ -13,37 +13,29 @@
 
 ---
 
-# PART 1 — AUDIT FILE CLEANUP
+### Audit File Cleanup
 
-## 1. Navigate to Audit Directory
-
+#### 1. Navigate to Audit Directory
 ```bash
 cd $ORACLE_BASE/admin/$ORACLE_SID/adump
 ls -lh
 ```
 
----
-
-## 2. Validate Files
-
+#### 2. Validate Files
 ```bash
 ls -lh *.aud
 ```
 
----
-
-## 3. Cleanup Audit Files (.aud)
-
+#### 3. Cleanup Audit Files (.aud)
 ```bash
 find . -type f -name "*.aud" -mtime +7 -exec rm -f {} \;
 ```
 
 ---
 
-# PART 2 — TRACE & LOG CLEANUP
+### Trace & Log Cleanup
 
-## 4. Navigate to Trace Directory
-
+#### 4. Navigate to Trace Directory
 ```bash
 cd $ORACLE_BASE/diag/rdbms
 ls
@@ -51,45 +43,32 @@ cd <db_name>
 cd <instance_name>/trace
 ```
 
----
-
-## 5. Validate Files
-
+#### 5. Validate Files
 ```bash
 ls -lh *.trc
 ls -lh *.log
 ```
 
----
-
-## 6. Cleanup Trace Files (.trc)
-
+#### 6. Cleanup Trace Files (.trc)
 ```bash
 find . -type f -name "*.trc" -mtime +7 -exec rm -f {} \;
 ```
 
----
-
-## 7. Cleanup Log Files (.log)
-
+#### 7. Cleanup Log Files (.log)
 ```bash
 find . -type f -name "*.log" -mtime +7 -exec rm -f {} \;
 ```
 
 ---
 
-# PART 3 — VALIDATION & SAFETY
+### Validation & Safety
 
-## 8. Preview Before Delete (Recommended)
-
+#### 8. Preview Before Delete (Recommended)
 ```bash
 find . -type f -mtime +7
 ```
 
----
-
-## 9. Disk Usage Check
-
+#### 9. Disk Usage Check
 ```bash
 du -sh .
 df -h
@@ -97,20 +76,19 @@ df -h
 
 ---
 
-# PART 4 — OPTIONAL (COMPRESSION)
+### Optional
 
-## 10. Compress Old Files Before Deletion
-
+#### 10. Compress Before Deletion
 ```bash
 find . -type f -mtime +3 -exec gzip {} \;
 ```
 
 ---
 
-# SUMMARY
+## Summary
 
-- Housekeeping dilakukan secara manual dengan navigasi direktori bertahap  
-- Audit, trace, dan log file dibersihkan berdasarkan retention policy  
-- Validasi dilakukan sebelum penghapusan untuk menghindari kesalahan  
-- Tidak menggunakan hardcoded path untuk menjaga fleksibilitas environment  
-- Metode ini memberikan kontrol penuh dan aman untuk production system  
+- Manual navigation ensures correct directory targeting  
+- Cleanup is based on retention policy  
+- Validation is performed before deletion  
+- Flexible for different Oracle environments  
+- Safe and suitable for production systems  
