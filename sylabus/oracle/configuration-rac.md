@@ -20,6 +20,37 @@
 | ASM Disk        | DATA1, DATA2                       |
 
 ---
+### 1. Oracle Grid Infrastructure (GRID HOME)
+
+Digunakan untuk:
+- ASM (Automatic Storage Management)
+- Clusterware (CRS, CSS, EVM)
+
+Download:
+
+https://www.oracle.com/database/technologies/oracle19c-linux-downloads.html
+
+File:
+- LINUX.X64_193000_grid_home.zip
+---
+
+---
+
+### 2. Oracle Database Software (DB HOME)
+
+Digunakan untuk:
+- Install database RAC
+- DBCA (Database Configuration Assistant)
+
+Download:
+
+https://www.oracle.com/database/technologies/oracle19c-linux-downloads.html
+
+File:
+- LINUX.X64_193000_db_home.zip
+---
+
+---
 
 # PART 1 — ASM SETUP (VIRTUALBOX)
 
