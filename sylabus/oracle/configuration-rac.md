@@ -47,7 +47,6 @@ https://www.oracle.com/database/technologies/oracle19c-linux-downloads.html
 
 File:
 - LINUX.X64_193000_db_home.zip
----
 
 ---
 
