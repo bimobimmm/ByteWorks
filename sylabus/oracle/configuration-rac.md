@@ -1,49 +1,33 @@
-# Oracle RAC 19c Installation Guide (3 Node - ByteWorks)
+# Oracle RAC 19c 3 Node + ASM Configuration Guide (ByteW@rks)
 
 ---
 
-## 1. Environment
+## Environment
 
-| Node | Hostname | Public IP |
-|------|----------|----------|
-| Node1 | PLVMRACDB1 | 192.168.56.10 |
-| Node2 | PLVMRACDB2 | 192.168.56.20 |
-| Node3 | PLVMRACDB3 | 192.168.56.30 |
-
----
-
-## 2. Software Download
-
-Download dari Oracle:
-
-https://www.oracle.com/database/technologies/oracle19c-linux-downloads.html  
-
-**File:**
-- LINUX.X64_193000_grid_home.zip  
-- LINUX.X64_193000_db_home.zip  
+| Parameter       | Value                              |
+| --------------- | ---------------------------------- |
+| Cluster Name    | rac-cluster                        |
+| Nodes           | plvmracdb1, plvmracdb2, plvmracdb3 |
+| Node 1 IP       | 192.168.56.11                      |
+| Node 2 IP       | 192.168.56.20                      |
+| Node 3 IP       | 192.168.56.30                      |
+| Grid Home       | /u01/app/19.0.0/grid               |
+| Oracle Base     | /u01/app/grid                      |
+| Public Network  | 192.168.56.0/24                    |
+| Private Network | 192.168.171.0/24                   |
+| SCAN            | rac-scan (192.168.56.90)           |
+| ASM Diskgroup   | DATA                               |
+| ASM Disk        | DATA1, DATA2                       |
 
 ---
 
-## 3. VM Configuration
+# PART 1 — ASM SETUP (VIRTUALBOX)
 
-**Per Node:**
-- RAM: 3–5 GB  
-- CPU: 1–2 Core  
-- Disk: 25–40 GB  
-
-**Network Adapter:**
-- Adapter 1 → NAT  
-- Adapter 2 → Host-Only  
-
----
-
-## 4. Create Shared ASM Disk (HOST)
+## 1. Create ASM Disk (Host)
 
 ```bash
-cd "C:\Program Files\Oracle\VirtualBox"
-
-VBoxManage createmedium disk --filename D:\RAC\asm1.vdi --size 8192 --format VDI
-VBoxManage createmedium disk --filename D:\RAC\asm2.vdi --size 8192 --format VDI
+VBoxManage createmedium disk --filename D:\RAC\asm1.vdi --size 8192 --format VDI --variant Fixed
+VBoxManage createmedium disk --filename D:\RAC\asm2.vdi --size 8192 --format VDI --variant Fixed
 
 VBoxManage modifyhd D:\RAC\asm1.vdi --type shareable
 VBoxManage modifyhd D:\RAC\asm2.vdi --type shareable
@@ -51,139 +35,60 @@ VBoxManage modifyhd D:\RAC\asm2.vdi --type shareable
 
 ---
 
-## 5. Attach Disk ke Semua VM
+## 2. Attach Disk ke Semua Node
 
-Tambahkan disk berikut ke:
-- PLVMRACDB1  
-- PLVMRACDB2  
-- PLVMRACDB3  
+* VirtualBox → Settings → Storage
+* Tambahkan:
 
----
-
-## 6. OS Preparation (ALL NODE)
-
-```bash
-hostnamectl set-hostname PLVMRACDB1   # sesuaikan tiap node
-
-systemctl stop firewalld
-systemctl disable firewalld
-
-setenforce 0
-
-yum install -y oracle-database-preinstall-19c
-yum install -y oracleasm-support oracleasm
-```
+  * asm1.vdi
+  * asm2.vdi
+* Mode: **SHAREABLE**
 
 ---
 
-## 7. Directory Setup
-
-```bash
-mkdir -p /u01/app/oracle
-mkdir -p /u01/app/oraInventory
-mkdir -p /u01/app/19.0.0/grid
-mkdir -p /u01/app/oracle/product/19.0.0/dbhome_1
-
-chown -R oracle:oinstall /u01
-chmod -R 775 /u01
-```
-
----
-
-## 8. Network Configuration
-
-### Set IP
-
-#### Node1
-```bash
-nmcli con mod eth0 ipv4.addresses 192.168.56.10/24 ipv4.method manual
-nmcli con mod eth1 ipv4.addresses 10.10.10.1/24 ipv4.method manual
-nmcli con up eth0
-nmcli con up eth1
-```
-
-#### Node2
-```bash
-nmcli con mod eth0 ipv4.addresses 192.168.56.20/24 ipv4.method manual
-nmcli con mod eth1 ipv4.addresses 10.10.10.2/24 ipv4.method manual
-```
-
-#### Node3
-```bash
-nmcli con mod eth0 ipv4.addresses 192.168.56.30/24 ipv4.method manual
-nmcli con mod eth1 ipv4.addresses 10.10.10.3/24 ipv4.method manual
-```
-
----
-
-### /etc/hosts (WAJIB SAMA DI SEMUA NODE)
-
-```bash
-# PUBLIC
-192.168.56.10 PLVMRACDB1
-192.168.56.20 PLVMRACDB2
-192.168.56.30 PLVMRACDB3
-
-# VIP
-192.168.56.11 PLVMRACDB1-vip
-192.168.56.21 PLVMRACDB2-vip
-192.168.56.31 PLVMRACDB3-vip
-
-# PRIVATE
-10.10.10.1 PLVMRACDB1-priv
-10.10.10.2 PLVMRACDB2-priv
-10.10.10.3 PLVMRACDB3-priv
-
-# SCAN
-192.168.56.100 rac-scan
-```
-
----
-
-### Validation
-
-```bash
-ping PLVMRACDB2
-ping PLVMRACDB3
-ping rac-scan
-```
-
----
-
-## 9. SSH Passwordless
-
-```bash
-ssh-keygen -t rsa
-ssh-copy-id PLVMRACDB1
-ssh-copy-id PLVMRACDB2
-ssh-copy-id PLVMRACDB3
-```
-
----
-
-## 10. ASM Configuration (DETAIL)
-
-### Verify Disk
+## 3. Verifikasi Disk
 
 ```bash
 lsblk
 ```
 
 Expected:
-- sdb  
-- sdc  
+
+```bash
+sdb 8G
+sdc 8G
+```
 
 ---
 
-### Configure ASM (ALL NODE)
+# PART 2 — ASM CONFIGURATION
+
+## 4. Install ASM Package
+
+```bash
+yum install -y oracleasm-support oracleasmlib oracleasm
+```
+
+---
+
+## 5. Configure ASM
 
 ```bash
 oracleasm configure -i
 ```
 
+Input:
+
+```
+oracle
+oinstall
+y
+y
+```
+
 ---
 
-### Initialize
+## 6. Initialize ASM
 
 ```bash
 oracleasm init
@@ -191,33 +96,244 @@ oracleasm init
 
 ---
 
-### Create Disk (ONLY NODE1)
+## 7. Partition Disk
 
 ```bash
-oracleasm createdisk DATA1 /dev/sdb
-oracleasm createdisk DATA2 /dev/sdc
+fdisk /dev/sdb
+fdisk /dev/sdc
+```
+
+Steps:
+
+```
+n → p → 1 → enter → enter → w
 ```
 
 ---
 
-### Scan Disk (ALL NODE)
+## 8. Create ASM Disk
+
+```bash
+oracleasm createdisk DATA1 /dev/sdb1
+oracleasm createdisk DATA2 /dev/sdc1
+```
+
+---
+
+## 9. Scan & Verify
 
 ```bash
 oracleasm scandisks
 oracleasm listdisks
-```
-
----
-
-### Verify
-
-```bash
 ls -l /dev/oracleasm/disks/
 ```
 
 ---
 
-## 11. Grid Installation
+# PART 3 — NETWORK CONFIGURATION
+
+## 10. Adapter Mapping
+
+| Interface | Function |
+| --------- | -------- |
+| enp0s3    | NAT      |
+| enp0s8    | PUBLIC   |
+| enp0s9    | PRIVATE  |
+
+---
+
+## 11. Configure IP (SETIAP NODE BERBEDA)
+
+### Node 1 (plvmracdb1)
+
+```bash
+nmcli con mod PUBLIC ipv4.addresses 192.168.56.11/24
+nmcli con mod PUBLIC ipv4.method manual
+nmcli con mod PRIVATE ipv4.addresses 192.168.171.11/24
+nmcli con mod PRIVATE ipv4.method manual
+nmcli con up PUBLIC
+nmcli con up PRIVATE
+```
+
+### Node 2 (plvmracdb2)
+
+```bash
+nmcli con mod PUBLIC ipv4.addresses 192.168.56.20/24
+nmcli con mod PUBLIC ipv4.method manual
+nmcli con mod PRIVATE ipv4.addresses 192.168.171.20/24
+nmcli con mod PRIVATE ipv4.method manual
+nmcli con up PUBLIC
+nmcli con up PRIVATE
+```
+
+### Node 3 (plvmracdb3)
+
+```bash
+nmcli con mod PUBLIC ipv4.addresses 192.168.56.30/24
+nmcli con mod PUBLIC ipv4.method manual
+nmcli con mod PRIVATE ipv4.addresses 192.168.171.30/24
+nmcli con mod PRIVATE ipv4.method manual
+nmcli con up PUBLIC
+nmcli con up PRIVATE
+```
+
+---
+
+## 12. /etc/hosts (SEMUA NODE HARUS SAMA)
+
+```bash
+127.0.0.1 localhost
+
+# PUBLIC
+192.168.56.11 plvmracdb1
+192.168.56.20 plvmracdb2
+192.168.56.30 plvmracdb3
+
+# VIP
+192.168.56.12 plvmracdb1-vip
+192.168.56.21 plvmracdb2-vip
+192.168.56.31 plvmracdb3-vip
+
+# PRIVATE
+192.168.171.11 plvmracdb1-priv
+192.168.171.20 plvmracdb2-priv
+192.168.171.30 plvmracdb3-priv
+
+# SCAN
+192.168.56.90 rac-scan
+```
+
+---
+
+# PART 4 — USER & DIRECTORY
+
+## 13. Create Group
+
+```bash
+groupadd -g 54321 oinstall
+groupadd -g 54322 dba
+groupadd -g 54331 asmadmin
+groupadd -g 54332 asmdba
+groupadd -g 54333 asmoper
+```
+
+---
+
+## 14. Create User
+
+```bash
+useradd -u 1001 -g oinstall -G dba,asmadmin,asmdba,asmoper grid
+useradd -u 1002 -g oinstall -G dba,asmdba oracle
+
+passwd grid
+passwd oracle
+```
+
+---
+
+## 15. Directory Structure
+
+```bash
+mkdir -p /u01/app/19.0.0/grid
+mkdir -p /u01/app/grid
+mkdir -p /u01/app/oracle
+
+chown -R grid:oinstall /u01/app
+chmod -R 775 /u01/app
+```
+
+---
+
+# PART 5 — OS CONFIGURATION
+
+## 16. limits.conf
+
+```bash
+vi /etc/security/limits.conf
+
+grid hard nofile 65536
+grid hard nproc 16384
+grid soft stack 10240
+```
+
+---
+
+## 17. sysctl.conf
+
+```bash
+vi /etc/sysctl.conf
+
+fs.file-max = 6815744
+kernel.sem = 250 32000 100 128
+```
+
+Apply:
+
+```bash
+sysctl -p
+```
+
+---
+
+# PART 6 — SSH SETUP (WAJIB)
+
+## 18. GRID USER
+
+```bash
+su - grid
+ssh-keygen
+ssh-copy-id grid@plvmracdb1
+ssh-copy-id grid@plvmracdb2
+ssh-copy-id grid@plvmracdb3
+```
+
+---
+
+## 19. ORACLE USER
+
+```bash
+su - oracle
+ssh-keygen
+ssh-copy-id oracle@plvmracdb1
+ssh-copy-id oracle@plvmracdb2
+ssh-copy-id oracle@plvmracdb3
+```
+
+---
+
+## 20. ROOT USER
+
+```bash
+sudo su -
+ssh-keygen
+ssh-copy-id root@plvmracdb1
+ssh-copy-id root@plvmracdb2
+ssh-copy-id root@plvmracdb3
+```
+
+---
+
+## TEST SSH
+
+```bash
+ssh plvmracdb2 hostname
+ssh plvmracdb3 hostname
+```
+
+---
+
+# PART 7 — GRID INSTALLATION
+
+## 21. Extract Grid
+
+```bash
+su - grid
+unzip grid_home.zip -d /u01/app/19.0.0/grid
+```
+
+---
+
+## 22. Run Installer
 
 ```bash
 cd /u01/app/19.0.0/grid
@@ -226,32 +342,19 @@ cd /u01/app/19.0.0/grid
 
 ---
 
-### Config:
+## 23. Configuration
 
-- Cluster Name: BYTEWORK_CLUSTER  
-- SCAN: rac-scan  
-- Nodes:
-  - PLVMRACDB1  
-  - PLVMRACDB2  
-  - PLVMRACDB3  
+* Cluster Name : rac-cluster
+* SCAN Name    : rac-scan
 
----
+Network:
 
-### Network:
-
-- eth0 → PUBLIC  
-- eth1 → PRIVATE  
+* Public  → enp0s8
+* Private → enp0s9
 
 ---
 
-### ASM:
-
-- DATA1  
-- DATA2  
-
----
-
-### Root Script
+## 24. Root Script
 
 ```bash
 /u01/app/oraInventory/orainstRoot.sh
@@ -260,7 +363,38 @@ cd /u01/app/19.0.0/grid
 
 ---
 
-## 12. Database Installation
+# PART 8 — ASM DISKGROUP
+
+## 25. Create Diskgroup
+
+* Name        : DATA
+* Disk        : DATA1, DATA2
+* Redundancy  : External
+
+---
+
+# PART 9 — VALIDATION GRID
+
+```bash
+crsctl check cluster -all
+crsctl stat res -t
+olsnodes -n
+```
+
+---
+
+# PART 10 — DATABASE INSTALLATION
+
+## 26. Install Oracle Database
+
+```bash
+su - oracle
+./runInstaller
+```
+
+---
+
+## 27. Create RAC Database
 
 ```bash
 dbca
@@ -268,76 +402,19 @@ dbca
 
 ---
 
-### Config:
+# PART 11 — FINAL VALIDATION
 
-- RAC Database  
-- DB Name: BYTEWORK  
-- Nodes: 3  
-- Storage: ASM  
-
----
-
-## 13. Listener
-
-```bash
-srvctl status listener
-srvctl status scan_listener
-
-srvctl start listener
-srvctl start scan_listener
+```sql
+sqlplus / as sysdba
+select instance_name from gv$instance;
 ```
 
 ---
 
-## 14. TNS Configuration
+# SUMMARY
 
-```bash
-vi $ORACLE_HOME/network/admin/tnsnames.ora
-```
-
-```ini
-BYTEWORK =
-  (DESCRIPTION =
-    (ADDRESS = (PROTOCOL = TCP)(HOST = rac-scan)(PORT = 1521))
-    (CONNECT_DATA =
-      (SERVICE_NAME = BYTEWORK)
-    )
-  )
-```
-
----
-
-### Test
-
-```bash
-tnsping BYTEWORK
-```
-
----
-
-## 15. Validation
-
-```bash
-crsctl status resource -t
-olsnodes -n
-srvctl status database -d BYTEWORK
-srvctl status listener
-srvctl status scan_listener
-```
-
----
-
-## 16. Connection Flow
-
-Client → SCAN → SCAN Listener → Node → Instance
-
----
-
-# Summary
-
-- RAC terdiri dari 3 node  
-- ASM disk shared dari VirtualBox  
-- Network terdiri dari public, private, VIP, SCAN  
-- Listener otomatis oleh Grid Infrastructure  
-- TNS menggunakan SCAN  
-- Cluster siap digunakan untuk HA  
+* RAC 3 Node running
+* ASM Diskgroup mounted
+* SCAN listener aktif
+* VIP aktif
+* Cluster healthy
