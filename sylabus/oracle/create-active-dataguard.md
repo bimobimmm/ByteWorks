@@ -14,6 +14,34 @@
 
 # PART 1 — PRIMARY SERVER
 
+```sql
+$ORACLE_HOME/bin/rman target / \
+log=/data/scripts/oracle/backupdb.log << BKUP
+
+run{
+    delete noprompt backup;
+    delete noprompt copy;
+
+    allocate channel d1 device type disk;
+    allocate channel d2 device type disk;
+    allocate channel d3 device type disk;
+
+    backup as compressed backupset
+    database format='/data/backup/oracle/OCBCNISP/copy/%U';
+
+    sql "alter system switch logfile";
+    sql "alter system switch logfile";
+    sql "alter system switch logfile";
+
+    backup as compressed backupset
+    archivelog all format='/data/backup/oracle/OCBCNISP/backupset/%U';
+}
+
+exit;
+BKUP
+```
+
+
 ## 1. Create Standby Redo Log
 
 ```sql
