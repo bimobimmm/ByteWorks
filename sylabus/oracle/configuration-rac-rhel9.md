@@ -7,25 +7,24 @@
 | Parameter       | Value                              |
 | --------------- | ---------------------------------- |
 | Cluster Name    | rac-cluster                        |
-| Nodes           | plvmracdb1, plvmracdb2, plvmracdb3 |
+| Nodes           | plvmracdb1, plvmracdb2,            |
 | Node 1 IP       | 192.168.56.11                      |
 | Node 2 IP       | 192.168.56.20                      |
-| Node 3 IP       | 192.168.56.30                      |
-| VIP             | 192.168.56.12,21,31                |
+| VIP             | 192.168.56.12,21,                  |
 | SCAN            | rac-scan (192.168.56.90)           |
 | Public Network  | 192.168.56.0/24                    |
 | Private Network | 192.168.171.0/24                   |
 | Grid Home       | /u01/app/19.0.0/grid               |
-| DB Home         | /u01/app/oracle/product/19.0.0/db  |
 | Oracle Base     | /u01/app/oracle                    |
-| ASM Disk        | /dev/sdb, /dev/sdc                 |
 | Diskgroup       | DATA                               |
 
 ---
 
-# PART 0 — OS PREPARATION (ALL NODE)
+# PART 0 — OS PREPARATION
 
-```bash
+Menyiapkan OS agar tidak menghalangi instalasi Oracle serta memenuhi dependency.
+
+```bash id="p0"
 setenforce 0
 sed -i 's/SELINUX=enforcing/SELINUX=permissive/g' /etc/selinux/config
 
@@ -36,305 +35,273 @@ dnf install -y chrony
 systemctl enable chronyd
 systemctl start chronyd
 
-dnf install -y bc binutils elfutils-libelf gcc gcc-c++ glibc glibc-devel ksh \
-libaio libaio-devel libXrender libXrender-devel libX11 libXau libXi \
-libXtst make smartmontools sysstat unzip net-tools
+dnf install -y bc binutils elfutils-libelf gcc gcc-c++ glibc glibc-devel \
+ksh libaio libaio-devel libXrender libX11 libXau libXi libXtst make unzip net-tools
+```
+
+Validasi:
+
+```bash id="p0v"
+getenforce
+systemctl status chronyd | grep active
 ```
 
 ---
 
 # PART 1 — USER & GROUP
 
-```bash
+Membuat user dan group standar Oracle untuk Grid dan Database.
+
+```bash id="p1"
 groupadd -g 54321 oinstall
 groupadd -g 54322 dba
-groupadd -g 54323 oper
 groupadd -g 54324 asmadmin
 groupadd -g 54325 asmdba
 groupadd -g 54326 asmoper
 
-useradd -u 54321 -g oinstall -G dba,asmdba,oper oracle
+useradd -u 54321 -g oinstall -G dba,asmdba oracle
 useradd -u 54322 -g oinstall -G asmadmin,asmdba,asmoper,dba grid
 
 passwd oracle
 passwd grid
 ```
 
----
+Validasi:
 
-# PART 2 — ENVIRONMENT VARIABLE
-
-## GRID
-
-```bash
-su - grid
-```
-
-```bash
-echo "export ORACLE_BASE=/u01/app/grid" >> ~/.bash_profile
-echo "export ORACLE_HOME=/u01/app/19.0.0/grid" >> ~/.bash_profile
-echo "export ORACLE_SID=+ASM1" >> ~/.bash_profile
-echo "export PATH=\$ORACLE_HOME/bin:\$PATH" >> ~/.bash_profile
-source ~/.bash_profile
+```bash id="p1v"
+id oracle
+id grid
 ```
 
 ---
 
-## ORACLE
+# PART 2 — DIRECTORY STRUCTURE
 
-```bash
-su - oracle
-```
+Menyusun struktur direktori Oracle Base, Grid Home, dan DB Home dengan ownership yang benar.
 
-```bash
-echo "export ORACLE_BASE=/u01/app/oracle" >> ~/.bash_profile
-echo "export ORACLE_HOME=/u01/app/oracle/product/19.0.0/db" >> ~/.bash_profile
-echo "export ORACLE_SID=RACDB1" >> ~/.bash_profile
-echo "export PATH=\$ORACLE_HOME/bin:\$PATH" >> ~/.bash_profile
-source ~/.bash_profile
-```
-
----
-
-# PART 3 — DIRECTORY
-
-```bash
+```bash id="p2"
+mkdir -p /u01/app/oracle
 mkdir -p /u01/app/19.0.0/grid
 mkdir -p /u01/app/oracle/product/19.0.0/db
-mkdir -p /u01/app/grid
 
-chown -R grid:oinstall /u01/app
+chown -R oracle:oinstall /u01/app/oracle
+chown -R grid:oinstall /u01/app/19.0.0
 chmod -R 775 /u01/app
 ```
 
----
+Validasi:
 
-# PART 4 — NETWORK (SESUAI ASLI)
-
-## NODE 1 — plvmracdb1
-
-```bash
-hostnamectl set-hostname plvmracdb1
-
-nmcli con mod enp0s8 ipv4.addresses 192.168.56.11/24
-nmcli con mod enp0s8 ipv4.method manual
-
-nmcli con mod enp0s9 ipv4.addresses 192.168.171.11/24
-nmcli con mod enp0s9 ipv4.method manual
-
-nmcli con up enp0s8
-nmcli con up enp0s9
+```bash id="p2v"
+ls -ld /u01/app/oracle
+ls -ld /u01/app/19.0.0/grid
 ```
 
 ---
 
-## NODE 2 — plvmracdb2
+# PART 3 — NETWORK
 
-```bash
-hostnamectl set-hostname plvmracdb2
+Mengatur resolusi hostname untuk komunikasi RAC (public, private, VIP, SCAN).
 
-nmcli con mod enp0s8 ipv4.addresses 192.168.56.20/24
-nmcli con mod enp0s8 ipv4.method manual
-
-nmcli con mod enp0s9 ipv4.addresses 192.168.171.20/24
-nmcli con mod enp0s9 ipv4.method manual
-
-nmcli con up enp0s8
-nmcli con up enp0s9
-```
-
----
-
-## NODE 3 — plvmracdb3
-
-```bash
-hostnamectl set-hostname plvmracdb3
-
-nmcli con mod enp0s8 ipv4.addresses 192.168.56.30/24
-nmcli con mod enp0s8 ipv4.method manual
-
-nmcli con mod enp0s9 ipv4.addresses 192.168.171.30/24
-nmcli con mod enp0s9 ipv4.method manual
-
-nmcli con up enp0s8
-nmcli con up enp0s9
-```
-
----
-
-## /etc/hosts (ALL NODE)
-
-```bash
-127.0.0.1 localhost
-
+```bash id="p3"
 192.168.56.11 plvmracdb1
 192.168.56.20 plvmracdb2
-192.168.56.30 plvmracdb3
 
 192.168.56.12 plvmracdb1-vip
 192.168.56.21 plvmracdb2-vip
-192.168.56.31 plvmracdb3-vip
 
 192.168.171.11 plvmracdb1-priv
 192.168.171.20 plvmracdb2-priv
-192.168.171.30 plvmracdb3-priv
 
 192.168.56.90 rac-scan
 ```
 
----
+Validasi:
 
-# PART 5 — DISK PREPARATION
-
-```bash
-lsblk
+```bash id="p3v"
+ping -c 1 plvmracdb2
+getent hosts rac-scan
 ```
 
-```bash
+---
+
+# PART 4 — DISK ASM
+
+Menyiapkan disk yang akan digunakan oleh ASM.
+
+```bash id="p4"
+lsblk
 chown grid:asmadmin /dev/sdb /dev/sdc
 chmod 660 /dev/sdb /dev/sdc
 ```
 
+Validasi:
+
+```bash id="p4v"
+ls -l /dev/sdb /dev/sdc
+```
+
 ---
 
-# PART 6 — SSH SETUP (ALL USER)
+# PART 5 — PASSWORDLESS SSH
 
-## GRID
+Menyiapkan SSH tanpa password antar node dan ke diri sendiri (self SSH).
 
-```bash
+```bash id="p5reset"
 su - grid
+rm -rf ~/.ssh
+mkdir ~/.ssh
+chmod 700 ~/.ssh
+```
+
+Node1:
+
+```bash id="p5n1"
 ssh-keygen -t rsa -N "" -f ~/.ssh/id_rsa
-
-for i in plvmracdb1 plvmracdb2 plvmracdb3
-do
- ssh-copy-id grid@$i
-done
+ssh-copy-id grid@plvmracdb2
 ```
 
----
+Node2:
 
-## ORACLE
-
-```bash
-su - oracle
+```bash id="p5n2"
 ssh-keygen -t rsa -N "" -f ~/.ssh/id_rsa
+ssh-copy-id grid@plvmracdb1
+```
 
-for i in plvmracdb1 plvmracdb2 plvmracdb3
-do
- ssh-copy-id oracle@$i
-done
+Self SSH (di kedua node):
+
+```bash id="p5self"
+cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
+```
+
+Validasi:
+
+```bash id="p5v"
+ssh -o PasswordAuthentication=no plvmracdb1 hostname
+ssh -o PasswordAuthentication=no plvmracdb2 hostname
 ```
 
 ---
 
-## ROOT
+# PART 6 — /tmp CONFIGURATION
 
-```bash
-sudo su -
-ssh-keygen -t rsa -N "" -f ~/.ssh/id_rsa
+Memastikan direktori /tmp bisa digunakan untuk eksekusi remote oleh Oracle.
 
-for i in plvmracdb1 plvmracdb2 plvmracdb3
-do
- ssh-copy-id root@$i
-done
+```bash id="p6"
+chmod 1777 /tmp
+mount -o remount,exec /tmp
+rm -rf /tmp/*
+```
+
+Validasi:
+
+```bash id="p6v"
+ssh plvmracdb2 "echo OK > /tmp/test && cat /tmp/test"
 ```
 
 ---
 
-## TEST
+# PART 7 — UNZIP GRID HOME
 
-```bash
-ssh plvmracdb2 hostname
-ssh plvmracdb3 hostname
-```
+Menyiapkan binary Grid Infrastructure.
 
----
-
-# PART 7 — AFD CONFIG (SEBELUM GI)
-
-```bash
+```bash id="p7"
 su - grid
+unzip LINUX.X64_193000_grid_home.zip -d /u01/app/19.0.0/grid
+```
+
+Validasi:
+
+```bash id="p7v"
+ls /u01/app/19.0.0/grid/runInstaller
+```
+
+---
+
+# PART 8 — ASM AFD
+
+Mengaktifkan ASM Filter Driver dan melabel disk.
+
+```bash id="p8"
 export ORACLE_HOME=/u01/app/19.0.0/grid
 export PATH=$ORACLE_HOME/bin:$PATH
 
 asmcmd afd_configure
-asmcmd afd_state
-
 asmcmd afd_label DATA1 /dev/sdb
 asmcmd afd_label DATA2 /dev/sdc
+```
 
+Validasi:
+
+```bash id="p8v"
 asmcmd afd_lsdsk
 ```
 
 ---
 
-# PART 8 — INSTALL GRID
+# PART 9 — INSTALL GRID
 
-```bash
-su - grid
-unzip LINUX.X64_193000_grid_home.zip -d /u01/app/19.0.0/grid
-cd /u01/app/19.0.0/grid
-./gridSetup.sh
+Menjalankan instalasi Grid Infrastructure.
+
+```bash id="p9"
+./gridSetup.sh -ignorePrereq -J"-Doracle.install.db.validate.supportedOSCheck=false"
 ```
 
-SELECT:
+Konfigurasi:
 
-* RAC
-* ASM → AFD
+* Cluster: RAC
+* SCAN: rac-scan
+* Network: enp0s8 (public), enp0s9 (private)
+* Storage: ASM (AFD)
+* Diskgroup: External redundancy
 
 ---
 
-# PART 9 — ROOT SCRIPT
+# PART 10 — ROOT SCRIPT
 
-```bash
+Menyelesaikan instalasi dengan hak akses root.
+
+```bash id="p10"
 /u01/app/oraInventory/orainstRoot.sh
 /u01/app/19.0.0/grid/root.sh
 ```
 
 ---
 
-# PART 10 — ASM DISKGROUP
+# PART 11 — UNZIP DB HOME
 
-* DATA
-* External
-* DATA1, DATA2
+Menyiapkan binary Oracle Database.
 
----
-
-# PART 11 — VALIDATION
-
-```bash
-crsctl check cluster -all
-crsctl stat res -t
-olsnodes -n
-```
-
----
-
-# PART 12 — DATABASE
-
-```bash
+```bash id="p11"
 su - oracle
-./runInstaller
-dbca
+unzip LINUX.X64_193000_db_home.zip -d /u01/app/oracle/product/19.0.0/db
+```
+
+Validasi:
+
+```bash id="p11v"
+ls /u01/app/oracle/product/19.0.0/db/runInstaller
 ```
 
 ---
 
-# FINAL CHECK
+# FINAL VALIDATION
 
-```sql
-select instance_name from gv$instance;
+Memastikan cluster berjalan normal.
+
+```bash id="p12"
+crsctl check cluster -all
+olsnodes -n
 ```
 
 ---
 
 # RESULT
 
-✔ RAC 3 Node Running
-✔ ASM AFD OK
-✔ Network sesuai original design
-✔ SCAN & VIP aktif
+RAC 2 node aktif, ASM berjalan dengan AFD, SSH antar node valid, dan cluster siap digunakan.
+
+---
+
 ✔ RHEL9 Ready
 
 ---
