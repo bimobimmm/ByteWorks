@@ -1,45 +1,42 @@
-# Oracle RAC 19c 3 Node + ASM (AFD) — FULL HOW TO (RHEL 9)
+# Oracle RAC 19c 3 Node + ASM (AFD) — FINAL HOW TO (RHEL 9)
 
 ---
 
 ## ENVIRONMENT
 
-| Parameter       | Value                             |
-| --------------- | --------------------------------- |
-| Cluster Name    | rac-cluster                       |
-| Nodes           | rac1, rac2, rac3                  |
-| Node 1 IP       | 192.168.56.11                     |
-| Node 2 IP       | 192.168.56.12                     |
-| Node 3 IP       | 192.168.56.13                     |
-| VIP             | 192.168.56.21-23                  |
-| SCAN            | rac-scan (192.168.56.100)         |
-| Public Network  | 192.168.56.0/24                   |
-| Private Network | 192.168.171.0/24                  |
-| Grid Home       | /u01/app/19.0.0/grid              |
-| DB Home         | /u01/app/oracle/product/19.0.0/db |
-| Oracle Base     | /u01/app/oracle                   |
-| ASM Disk        | /dev/sdb, /dev/sdc                |
-| Diskgroup       | DATA                              |
+| Parameter    | Value                             |
+| ------------ | --------------------------------- |
+| Cluster Name | rac-cluster                       |
+| Nodes        | rac1, rac2, rac3                  |
+| Public IP    | 192.168.56.11-13                  |
+| VIP          | 192.168.56.21-23                  |
+| Private IP   | 192.168.171.11-13                 |
+| SCAN         | rac-scan (192.168.56.100)         |
+| Grid Home    | /u01/app/19.0.0/grid              |
+| DB Home      | /u01/app/oracle/product/19.0.0/db |
+| Oracle Base  | /u01/app/oracle                   |
+| ASM Disk     | /dev/sdb, /dev/sdc                |
+| Diskgroup    | DATA                              |
 
 ---
 
-# PART 0 — OS PREPARATION
+# PART 0 — OS PREPARATION (ALL NODE)
 
-## 0.1 Disable SELinux
+## Disable SELinux
 
 ```bash
 setenforce 0
 sed -i 's/SELINUX=enforcing/SELINUX=permissive/g' /etc/selinux/config
 ```
 
-## 0.2 Disable Firewall
+## Disable Firewall
 
 ```bash
 systemctl stop firewalld
 systemctl disable firewalld
 ```
 
-## 0.3 Time Sync (MANDATORY RAC)
+## Time Sync (WAJIB)
 
 ```bash
 dnf install -y chrony
@@ -48,9 +45,7 @@ systemctl start chronyd
 chronyc sources
 ```
 
----
-
-## 0.4 Install Required Packages
+## Install Required Packages
 
 ```bash
 dnf install -y bc binutils elfutils-libelf gcc gcc-c++ glibc glibc-devel ksh \
@@ -81,10 +76,13 @@ passwd grid
 
 # PART 2 — ENVIRONMENT VARIABLE
 
-## GRID USER
+## GRID
 
 ```bash
 su - grid
+```
+
+```bash
 vi ~/.bash_profile
 ```
 
@@ -97,7 +95,7 @@ export PATH=$ORACLE_HOME/bin:$PATH
 
 ---
 
-## ORACLE USER
+## ORACLE
 
 ```bash
 su - oracle
@@ -126,24 +124,36 @@ chmod -R 775 /u01/app
 
 ---
 
-# PART 4 — NETWORK
+# PART 4 — NETWORK (PER NODE)
 
-## Interface Mapping
-
-| Interface | Function |
-| --------- | -------- |
-| enp0s3    | NAT      |
-| enp0s8    | PUBLIC   |
-| enp0s9    | PRIVATE  |
-
----
-
-## Configure IP (Each Node)
+## NODE 1 — rac1
 
 ```bash
 nmcli con mod enp0s8 ipv4.addresses 192.168.56.11/24
 nmcli con mod enp0s8 ipv4.method manual
 nmcli con mod enp0s9 ipv4.addresses 192.168.171.11/24
+nmcli con mod enp0s9 ipv4.method manual
+nmcli con up enp0s8
+nmcli con up enp0s9
+```
+
+## NODE 2 — rac2
+
+```bash
+nmcli con mod enp0s8 ipv4.addresses 192.168.56.12/24
+nmcli con mod enp0s8 ipv4.method manual
+nmcli con mod enp0s9 ipv4.addresses 192.168.171.12/24
+nmcli con mod enp0s9 ipv4.method manual
+nmcli con up enp0s8
+nmcli con up enp0s9
+```
+
+## NODE 3 — rac3
+
+```bash
+nmcli con mod enp0s8 ipv4.addresses 192.168.56.13/24
+nmcli con mod enp0s8 ipv4.method manual
+nmcli con mod enp0s9 ipv4.addresses 192.168.171.13/24
 nmcli con mod enp0s9 ipv4.method manual
 nmcli con up enp0s8
 nmcli con up enp0s9
@@ -156,28 +166,24 @@ nmcli con up enp0s9
 ```bash
 127.0.0.1 localhost
 
-# PUBLIC
 192.168.56.11 rac1
 192.168.56.12 rac2
 192.168.56.13 rac3
 
-# VIP
 192.168.56.21 rac1-vip
 192.168.56.22 rac2-vip
 192.168.56.23 rac3-vip
 
-# PRIVATE
 192.168.171.11 rac1-priv
 192.168.171.12 rac2-priv
 192.168.171.13 rac3-priv
 
-# SCAN
 192.168.56.100 rac-scan
 ```
 
 ---
 
-# PART 5 — DISK PREPARATION (AFD)
+# PART 5 — DISK PREPARATION
 
 ```bash
 lsblk
@@ -189,8 +195,6 @@ Expected:
 sdb
 sdc
 ```
-
-Set permission:
 
 ```bash
 chown grid:asmadmin /dev/sdb /dev/sdc
@@ -228,21 +232,10 @@ cd /u01/app/19.0.0/grid
 ./gridSetup.sh
 ```
 
----
+### SELECT:
 
-## Installer Setting
-
-* Cluster Name : rac-cluster
-* SCAN         : rac-scan
-* Network      :
-
-  * Public  → enp0s8
-  * Private → enp0s9
-
-⚠️ IMPORTANT:
-
-* SELECT: ASM Filter Driver (AFD)
-* DO NOT SELECT: ASMLib
+* Configure Grid Infrastructure for RAC
+* Configure ASM → **AFD**
 
 ---
 
@@ -284,9 +277,9 @@ asmcmd afd_lsdsk
 
 # PART 10 — ASM DISKGROUP
 
-* Name        : DATA
-* Redundancy  : External
-* Disk        : DATA1, DATA2
+* Name: DATA
+* Redundancy: External
+* Disk: DATA1, DATA2
 
 ---
 
@@ -300,7 +293,7 @@ olsnodes -n
 
 ---
 
-# PART 12 — DATABASE INSTALL
+# PART 12 — INSTALL DATABASE
 
 ```bash
 su - oracle
@@ -310,7 +303,7 @@ dbca
 
 ---
 
-# PART 13 — FINAL VALIDATION
+# PART 13 — FINAL CHECK
 
 ```sql
 select instance_name from gv$instance;
@@ -318,12 +311,12 @@ select instance_name from gv$instance;
 
 ---
 
-# SUMMARY
+# FINAL RESULT
 
 ✔ RAC 3 Node Running
-✔ ASM AFD (RHEL9 compatible)
-✔ No ASMLib
+✔ ASM via AFD
+✔ SCAN & VIP aktif
 ✔ Cluster Healthy
-✔ Production Ready Lab
+✔ RHEL9 Compatible
 
 ---
