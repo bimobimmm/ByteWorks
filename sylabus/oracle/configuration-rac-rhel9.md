@@ -1,53 +1,41 @@
-# Oracle RAC 19c 3 Node + ASM (AFD) — FINAL HOW TO (RHEL 9)
+# Oracle RAC 19c 3 Node + ASM (AFD) — FULL FINAL HOW TO (RHEL 9)
 
 ---
 
 ## ENVIRONMENT
 
-| Parameter    | Value                             |
-| ------------ | --------------------------------- |
-| Cluster Name | rac-cluster                       |
-| Nodes        | rac1, rac2, rac3                  |
-| Public IP    | 192.168.56.11-13                  |
-| VIP          | 192.168.56.21-23                  |
-| Private IP   | 192.168.171.11-13                 |
-| SCAN         | rac-scan (192.168.56.100)         |
-| Grid Home    | /u01/app/19.0.0/grid              |
-| DB Home      | /u01/app/oracle/product/19.0.0/db |
-| Oracle Base  | /u01/app/oracle                   |
-| ASM Disk     | /dev/sdb, /dev/sdc                |
-| Diskgroup    | DATA                              |
+| Parameter       | Value                              |
+| --------------- | ---------------------------------- |
+| Cluster Name    | rac-cluster                        |
+| Nodes           | plvmracdb1, plvmracdb2, plvmracdb3 |
+| Node 1 IP       | 192.168.56.11                      |
+| Node 2 IP       | 192.168.56.20                      |
+| Node 3 IP       | 192.168.56.30                      |
+| VIP             | 192.168.56.12,21,31                |
+| SCAN            | rac-scan (192.168.56.90)           |
+| Public Network  | 192.168.56.0/24                    |
+| Private Network | 192.168.171.0/24                   |
+| Grid Home       | /u01/app/19.0.0/grid               |
+| DB Home         | /u01/app/oracle/product/19.0.0/db  |
+| Oracle Base     | /u01/app/oracle                    |
+| ASM Disk        | /dev/sdb, /dev/sdc                 |
+| Diskgroup       | DATA                               |
 
 ---
 
 # PART 0 — OS PREPARATION (ALL NODE)
 
-## Disable SELinux
-
 ```bash
 setenforce 0
 sed -i 's/SELINUX=enforcing/SELINUX=permissive/g' /etc/selinux/config
-```
 
-## Disable Firewall
-
-```bash
 systemctl stop firewalld
 systemctl disable firewalld
-```
 
-## Time Sync (WAJIB)
-
-```bash
 dnf install -y chrony
 systemctl enable chronyd
 systemctl start chronyd
-chronyc sources
-```
 
-## Install Required Packages
-
-```bash
 dnf install -y bc binutils elfutils-libelf gcc gcc-c++ glibc glibc-devel ksh \
 libaio libaio-devel libXrender libXrender-devel libX11 libXau libXi \
 libXtst make smartmontools sysstat unzip net-tools
@@ -83,14 +71,11 @@ su - grid
 ```
 
 ```bash
-vi ~/.bash_profile
-```
-
-```bash
-export ORACLE_BASE=/u01/app/grid
-export ORACLE_HOME=/u01/app/19.0.0/grid
-export ORACLE_SID=+ASM1
-export PATH=$ORACLE_HOME/bin:$PATH
+echo "export ORACLE_BASE=/u01/app/grid" >> ~/.bash_profile
+echo "export ORACLE_HOME=/u01/app/19.0.0/grid" >> ~/.bash_profile
+echo "export ORACLE_SID=+ASM1" >> ~/.bash_profile
+echo "export PATH=\$ORACLE_HOME/bin:\$PATH" >> ~/.bash_profile
+source ~/.bash_profile
 ```
 
 ---
@@ -99,14 +84,14 @@ export PATH=$ORACLE_HOME/bin:$PATH
 
 ```bash
 su - oracle
-vi ~/.bash_profile
 ```
 
 ```bash
-export ORACLE_BASE=/u01/app/oracle
-export ORACLE_HOME=/u01/app/oracle/product/19.0.0/db
-export ORACLE_SID=RACDB1
-export PATH=$ORACLE_HOME/bin:$PATH
+echo "export ORACLE_BASE=/u01/app/oracle" >> ~/.bash_profile
+echo "export ORACLE_HOME=/u01/app/oracle/product/19.0.0/db" >> ~/.bash_profile
+echo "export ORACLE_SID=RACDB1" >> ~/.bash_profile
+echo "export PATH=\$ORACLE_HOME/bin:\$PATH" >> ~/.bash_profile
+source ~/.bash_profile
 ```
 
 ---
@@ -124,37 +109,53 @@ chmod -R 775 /u01/app
 
 ---
 
-# PART 4 — NETWORK (PER NODE)
+# PART 4 — NETWORK (SESUAI ASLI)
 
-## NODE 1 — rac1
+## NODE 1 — plvmracdb1
 
 ```bash
+hostnamectl set-hostname plvmracdb1
+
 nmcli con mod enp0s8 ipv4.addresses 192.168.56.11/24
 nmcli con mod enp0s8 ipv4.method manual
+
 nmcli con mod enp0s9 ipv4.addresses 192.168.171.11/24
 nmcli con mod enp0s9 ipv4.method manual
+
 nmcli con up enp0s8
 nmcli con up enp0s9
 ```
 
-## NODE 2 — rac2
+---
+
+## NODE 2 — plvmracdb2
 
 ```bash
-nmcli con mod enp0s8 ipv4.addresses 192.168.56.12/24
+hostnamectl set-hostname plvmracdb2
+
+nmcli con mod enp0s8 ipv4.addresses 192.168.56.20/24
 nmcli con mod enp0s8 ipv4.method manual
-nmcli con mod enp0s9 ipv4.addresses 192.168.171.12/24
+
+nmcli con mod enp0s9 ipv4.addresses 192.168.171.20/24
 nmcli con mod enp0s9 ipv4.method manual
+
 nmcli con up enp0s8
 nmcli con up enp0s9
 ```
 
-## NODE 3 — rac3
+---
+
+## NODE 3 — plvmracdb3
 
 ```bash
-nmcli con mod enp0s8 ipv4.addresses 192.168.56.13/24
+hostnamectl set-hostname plvmracdb3
+
+nmcli con mod enp0s8 ipv4.addresses 192.168.56.30/24
 nmcli con mod enp0s8 ipv4.method manual
-nmcli con mod enp0s9 ipv4.addresses 192.168.171.13/24
+
+nmcli con mod enp0s9 ipv4.addresses 192.168.171.30/24
 nmcli con mod enp0s9 ipv4.method manual
+
 nmcli con up enp0s8
 nmcli con up enp0s9
 ```
@@ -166,19 +167,19 @@ nmcli con up enp0s9
 ```bash
 127.0.0.1 localhost
 
-192.168.56.11 rac1
-192.168.56.12 rac2
-192.168.56.13 rac3
+192.168.56.11 plvmracdb1
+192.168.56.20 plvmracdb2
+192.168.56.30 plvmracdb3
 
-192.168.56.21 rac1-vip
-192.168.56.22 rac2-vip
-192.168.56.23 rac3-vip
+192.168.56.12 plvmracdb1-vip
+192.168.56.21 plvmracdb2-vip
+192.168.56.31 plvmracdb3-vip
 
-192.168.171.11 rac1-priv
-192.168.171.12 rac2-priv
-192.168.171.13 rac3-priv
+192.168.171.11 plvmracdb1-priv
+192.168.171.20 plvmracdb2-priv
+192.168.171.30 plvmracdb3-priv
 
-192.168.56.100 rac-scan
+192.168.56.90 rac-scan
 ```
 
 ---
@@ -189,13 +190,6 @@ nmcli con up enp0s9
 lsblk
 ```
 
-Expected:
-
-```
-sdb
-sdc
-```
-
 ```bash
 chown grid:asmadmin /dev/sdb /dev/sdc
 chmod 660 /dev/sdb /dev/sdc
@@ -203,27 +197,78 @@ chmod 660 /dev/sdb /dev/sdc
 
 ---
 
-# PART 6 — SSH SETUP
+# PART 6 — SSH SETUP (ALL USER)
+
+## GRID
 
 ```bash
 su - grid
 ssh-keygen -t rsa -N "" -f ~/.ssh/id_rsa
 
-for i in rac1 rac2 rac3
+for i in plvmracdb1 plvmracdb2 plvmracdb3
 do
- ssh-copy-id $i
+ ssh-copy-id grid@$i
 done
-```
-
-Test:
-
-```bash
-ssh rac2 hostname
 ```
 
 ---
 
-# PART 7 — INSTALL GRID
+## ORACLE
+
+```bash
+su - oracle
+ssh-keygen -t rsa -N "" -f ~/.ssh/id_rsa
+
+for i in plvmracdb1 plvmracdb2 plvmracdb3
+do
+ ssh-copy-id oracle@$i
+done
+```
+
+---
+
+## ROOT
+
+```bash
+sudo su -
+ssh-keygen -t rsa -N "" -f ~/.ssh/id_rsa
+
+for i in plvmracdb1 plvmracdb2 plvmracdb3
+do
+ ssh-copy-id root@$i
+done
+```
+
+---
+
+## TEST
+
+```bash
+ssh plvmracdb2 hostname
+ssh plvmracdb3 hostname
+```
+
+---
+
+# PART 7 — AFD CONFIG (SEBELUM GI)
+
+```bash
+su - grid
+export ORACLE_HOME=/u01/app/19.0.0/grid
+export PATH=$ORACLE_HOME/bin:$PATH
+
+asmcmd afd_configure
+asmcmd afd_state
+
+asmcmd afd_label DATA1 /dev/sdb
+asmcmd afd_label DATA2 /dev/sdc
+
+asmcmd afd_lsdsk
+```
+
+---
+
+# PART 8 — INSTALL GRID
 
 ```bash
 su - grid
@@ -232,37 +277,10 @@ cd /u01/app/19.0.0/grid
 ./gridSetup.sh
 ```
 
-### SELECT:
+SELECT:
 
-* Configure Grid Infrastructure for RAC
-* Configure ASM → **AFD**
-
----
-
-# PART 8 — AFD CONFIG
-
-```bash
-su - grid
-asmcmd afd_configure
-asmcmd afd_state
-```
-
----
-
-## Label Disk
-
-```bash
-asmcmd afd_label DATA1 /dev/sdb
-asmcmd afd_label DATA2 /dev/sdc
-```
-
----
-
-## Verify
-
-```bash
-asmcmd afd_lsdsk
-```
+* RAC
+* ASM → AFD
 
 ---
 
@@ -277,9 +295,9 @@ asmcmd afd_lsdsk
 
 # PART 10 — ASM DISKGROUP
 
-* Name: DATA
-* Redundancy: External
-* Disk: DATA1, DATA2
+* DATA
+* External
+* DATA1, DATA2
 
 ---
 
@@ -293,7 +311,7 @@ olsnodes -n
 
 ---
 
-# PART 12 — INSTALL DATABASE
+# PART 12 — DATABASE
 
 ```bash
 su - oracle
@@ -303,7 +321,7 @@ dbca
 
 ---
 
-# PART 13 — FINAL CHECK
+# FINAL CHECK
 
 ```sql
 select instance_name from gv$instance;
@@ -311,12 +329,12 @@ select instance_name from gv$instance;
 
 ---
 
-# FINAL RESULT
+# RESULT
 
 ✔ RAC 3 Node Running
-✔ ASM via AFD
+✔ ASM AFD OK
+✔ Network sesuai original design
 ✔ SCAN & VIP aktif
-✔ Cluster Healthy
-✔ RHEL9 Compatible
+✔ RHEL9 Ready
 
 ---
