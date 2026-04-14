@@ -439,13 +439,16 @@ select instance_name, host_name from gv$instance;
 
 ---
 
-SUMMARY
-Network RAC berhasil dikonfigurasi (public & private, auto up)
-ASM shared disk berhasil dibuat dan digunakan oleh kedua node
-Disk ASM dibuat di node1 dan otomatis terdeteksi di node2
-Grid Infrastructure terinstall dan cluster dalam kondisi ONLINE
-Semua resource cluster berjalan normal
-Database RAC berhasil dibuat dan berjalan di kedua node
-Instance database aktif di masing-masing node
+# SUMMARY
+
+* Network RAC berhasil dikonfigurasi (public & private, auto up)
+* ASM shared disk berhasil dibuat dan digunakan oleh kedua node
+* Disk ASM dibuat di node1 dan otomatis terdeteksi di node2
+* Grid Infrastructure terinstall dan cluster dalam kondisi ONLINE
+* Semua resource cluster berjalan normal
+* Database RAC berhasil dibuat dan berjalan di kedua node
+* Instance database aktif di masing-masing node
+
+```
 
 ---
