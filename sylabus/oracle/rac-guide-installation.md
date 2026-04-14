@@ -450,5 +450,3 @@ select instance_name, host_name from gv$instance;
 * Instance database aktif di masing-masing node
 
 ```
-
----
