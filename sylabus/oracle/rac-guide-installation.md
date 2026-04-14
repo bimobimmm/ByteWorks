@@ -1,5 +1,26 @@
 # Oracle RAC 19c 2 Node + ASM Configuration Guide (ByteWorks)
 
+Topology
+                +----------------------+
+                |      rac-scan        |
+                |   192.168.56.90      |
+                +----------+-----------+
+                           |
+        -----------------------------------------
+        |                                       |
++-------------------+                +-------------------+
+|   plvmracdb1      |                |   plvmracdb2      |
+|-------------------|                |-------------------|
+| Public  : .11     |                | Public  : .20     |
+| VIP     : .12     |                | VIP     : .21     |
+| Private : .11     |                | Private : .20     |
+| ASM     : +ASM1   |                | ASM     : +ASM2   |
+| DB      : bw1     |                | DB      : bw2     |
++-------------------+                +-------------------+
+        |                                       |
+        ----------- Shared ASM Disk -------------
+                  (sdb, sdc)
+
 ---
 
 ## Environment
@@ -14,6 +35,45 @@
 | ASM Diskgroup | DATA                                    |
 
 ---
+
+PART 0 — ASM DISK (HOST / VIRTUALBOX)
+0.1 Create ASM Disk
+
+📍 Host (CMD / PowerShell)
+Membuat disk virtual yang akan digunakan sebagai shared storage ASM.
+
+VBoxManage createmedium disk --filename D:\RAC\asm1.vdi --size 8192 --format VDI --variant Fixed
+VBoxManage createmedium disk --filename D:\RAC\asm2.vdi --size 8192 --format VDI --variant Fixed
+0.2 Set Disk Shareable
+
+📍 Host
+Agar disk bisa digunakan oleh lebih dari 1 VM (requirement RAC).
+
+VBoxManage modifyhd D:\RAC\asm1.vdi --type shareable
+VBoxManage modifyhd D:\RAC\asm2.vdi --type shareable
+0.3 Attach Disk ke VM
+
+📍 VirtualBox GUI
+
+Tambahkan ke SEMUA NODE:
+
+asm1.vdi
+asm2.vdi
+
+Mode:
+
+Shareable
+0.4 Verifikasi Disk
+
+📍 All Node | root
+Memastikan disk sudah terbaca OS.
+
+lsblk
+
+Expected:
+
+sdb
+sdc
 
 # PART 1 — OS PREPARATION
 
@@ -356,40 +416,13 @@ select instance_name, host_name from gv$instance;
 
 ---
 
-# SUMMARY
-
-Environment berhasil dikonfigurasi dari nol hingga database RAC berjalan dengan kondisi berikut:
-
-- Network PUBLIC (enp0s8) dan PRIVATE (enp0s9) telah dikonfigurasi secara manual menggunakan nmcli
-- Interface PRIVATE (enp0s9) sudah diset autoconnect sehingga otomatis UP saat reboot
-- Resolusi hostname menggunakan /etc/hosts untuk PUBLIC, VIP, PRIVATE, dan SCAN berhasil dikonfigurasi konsisten di semua node
-- Package preinstall Oracle 19c berhasil diinstall untuk memenuhi dependency OS
-
-- User dan group (grid, oracle, oinstall, dba, asm*) telah dibuat identik di semua node
-- Struktur direktori Oracle (/u01/app) termasuk GRID HOME dan DB HOME telah dibuat dan diberikan ownership yang sesuai
-
-- ASM berhasil dikonfigurasi menggunakan oracleasm dengan user grid dan group oinstall
-- Disk ASM dibuat melalui proses partisi (fdisk) dan hanya diregistrasi di node1
-- Node2 berhasil mendeteksi disk ASM melalui proses scan (oracleasm scandisks)
-- Diskgroup DATA berhasil dibuat dan dapat diakses oleh kedua node
-
-- Passwordless SSH berhasil dikonfigurasi untuk user grid dan oracle antar node
-
-- Grid Infrastructure berhasil diinstall dan cluster terbentuk dengan 2 node
-- Semua komponen cluster (CRS, CSS, ASM, Listener, VIP, SCAN) dalam kondisi ONLINE dan STABLE
-- Validasi cluster menggunakan crsctl dan olsnodes menunjukkan hasil normal
-
-- Oracle Database software berhasil diinstall menggunakan user oracle
-- Database RAC berhasil dibuat menggunakan DBCA dengan storage ASM (diskgroup DATA)
-- Instance database berjalan di kedua node (byteworks1 dan byteworks2)
-
-- Environment oracle telah dikonfigurasi melalui .bash_profile dengan SID otomatis per node
-- Cluster dapat dikontrol menggunakan srvctl dan seluruh resource berjalan normal
-
-- RAC Backup Script berhasil dibuat untuk mendokumentasikan konfigurasi:
-  - Mengambil data system, network, cluster, ASM, listener
-  - Backup bash_profile user grid dan oracle
-  - Output dalam format TXT dan HTML (dark UI)
-  - File dinamai berdasarkan hostname masing-masing node
+SUMMARY
+Network RAC berhasil dikonfigurasi (public & private, auto up)
+ASM shared disk berhasil dibuat dan digunakan oleh kedua node
+Disk ASM dibuat di node1 dan otomatis terdeteksi di node2
+Grid Infrastructure terinstall dan cluster dalam kondisi ONLINE
+Semua resource cluster berjalan normal
+Database RAC berhasil dibuat dan berjalan di kedua node
+Instance database aktif di masing-masing node
 
 ---
