@@ -1,110 +1,162 @@
-# Oracle RAC 19c 3 Node + ASM Configuration Guide (ByteW@rks)
+# Oracle RAC 19c 2 Node + ASM Configuration Guide (ByteWorks)
 
 ---
 
 ## Environment
 
-| Parameter       | Value                              |
-| --------------- | ---------------------------------- |
-| Cluster Name    | rac-cluster                        |
-| Nodes           | plvmracdb1, plvmracdb2, plvmracdb3 |
-| Node 1 IP       | 192.168.56.11                      |
-| Node 2 IP       | 192.168.56.20                      |
-| Node 3 IP       | 192.168.56.30                      |
-| Grid Home       | /u01/app/19.0.0/grid               |
-| Oracle Base     | /u01/app/grid                      |
-| Public Network  | 192.168.56.0/24                    |
-| Private Network | 192.168.171.0/24                   |
-| SCAN            | rac-scan (192.168.56.90)           |
-| ASM Diskgroup   | DATA                               |
-| ASM Disk        | DATA1, DATA2                       |
-
----
-### 1. Oracle Grid Infrastructure (GRID HOME)
-
-Digunakan untuk:
-- ASM (Automatic Storage Management)
-- Clusterware (CRS, CSS, EVM)
-
-Grid Infrastructure adalah fondasi RAC yang menangani cluster dan storage ASM.
-
-Download:
-
-https://www.oracle.com/database/technologies/oracle19c-linux-downloads.html
-
-File:
-- LINUX.X64_193000_grid_home.zip
+| Parameter     | Value                                   |
+| ------------- | --------------------------------------- |
+| Nodes         | plvmracdb1, plvmracdb2                  |
+| Public IP     | 192.168.56.x                            |
+| Private IP    | 192.168.171.x                           |
+| Grid Home     | /u01/app/19.0.0/grid                    |
+| DB Home       | /u01/app/oracle/product/19.0.0/dbhome_1 |
+| ASM Diskgroup | DATA                                    |
 
 ---
 
-### 2. Oracle Database Software (DB HOME)
+# PART 1 — OS PREPARATION
 
-Digunakan untuk:
-- Install database RAC
-- DBCA (Database Configuration Assistant)
+## 1. Set Hostname
 
-Software ini digunakan untuk membuat database RAC setelah cluster siap.
-
-Download:
-
-https://www.oracle.com/database/technologies/oracle19c-linux-downloads.html
-
-File:
-- LINUX.X64_193000_db_home.zip
-
----
-
-# PART 1 — ASM SETUP (VIRTUALBOX)
-
-## 1. Create ASM Disk (Host)
-
-Membuat disk virtual sebagai shared storage antar node RAC.
+📍 All Node | root
+Menentukan identitas node dalam cluster.
 
 ```bash
-VBoxManage createmedium disk --filename D:\RAC\asm1.vdi --size 8192 --format VDI --variant Fixed
-VBoxManage createmedium disk --filename D:\RAC\asm2.vdi --size 8192 --format VDI --variant Fixed
-
-VBoxManage modifyhd D:\RAC\asm1.vdi --type shareable
-VBoxManage modifyhd D:\RAC\asm2.vdi --type shareable
+hostnamectl set-hostname plvmracdb1
+hostnamectl set-hostname plvmracdb2
 ```
 
 ---
 
-## 2. Attach Disk ke Semua Node
+## 2. Disable Firewall & SELinux
 
-Disk harus terpasang di semua node agar bisa digunakan ASM sebagai shared disk.
-
-* VirtualBox → Settings → Storage
-* Tambahkan:
-
-  * asm1.vdi
-  * asm2.vdi
-* Mode: **SHAREABLE**
-
----
-
-## 3. Verifikasi Disk
-
-Memastikan disk terbaca oleh OS.
+📍 All Node | root
+Menghindari blocking komunikasi RAC.
 
 ```bash
-lsblk
-```
+systemctl stop firewalld
+systemctl disable firewalld
 
-Expected:
-
-```bash
-sdb 8G
-sdc 8G
+setenforce 0
 ```
 
 ---
 
-# PART 2 — ASM CONFIGURATION
+## 3. Install Preinstall Package
 
-## 4. Install ASM Package
+📍 All Node | root
+Menginstall dependency Oracle otomatis.
 
-Install package ASM agar sistem support ASM.
+```bash
+yum install -y oracle-database-preinstall-19c
+```
+
+---
+
+# PART 2 — NETWORK CONFIG
+
+## 4. Configure Network
+
+📍 All Node | root
+Mengatur IP public & private.
+
+### Node1
+
+```bash
+nmcli con mod enp0s8 ipv4.addresses 192.168.56.11/24
+nmcli con mod enp0s8 ipv4.method manual
+
+nmcli con mod enp0s9 ipv4.addresses 192.168.171.11/24
+nmcli con mod enp0s9 ipv4.method manual
+```
+
+### Node2
+
+```bash
+nmcli con mod enp0s8 ipv4.addresses 192.168.56.20/24
+nmcli con mod enp0s8 ipv4.method manual
+
+nmcli con mod enp0s9 ipv4.addresses 192.168.171.20/24
+nmcli con mod enp0s9 ipv4.method manual
+```
+
+---
+
+## 5. Auto UP Network (PENTING)
+
+📍 All Node | root
+Agar interface aktif saat reboot.
+
+```bash
+nmcli con mod enp0s8 connection.autoconnect yes
+nmcli con mod enp0s9 connection.autoconnect yes
+```
+
+---
+
+## 6. /etc/hosts
+
+📍 All Node | root
+Resolusi hostname cluster.
+
+```bash
+192.168.56.11 plvmracdb1
+192.168.56.20 plvmracdb2
+
+192.168.56.12 plvmracdb1-vip
+192.168.56.21 plvmracdb2-vip
+
+192.168.171.11 plvmracdb1-priv
+192.168.171.20 plvmracdb2-priv
+
+192.168.56.90 rac-scan
+```
+
+---
+
+# PART 3 — USER & DIRECTORY
+
+## 7. Create User & Group
+
+📍 All Node | root
+User harus identik antar node.
+
+```bash
+groupadd -g 54321 oinstall
+groupadd -g 54322 dba
+groupadd -g 54331 asmadmin
+groupadd -g 54332 asmdba
+groupadd -g 54333 asmoper
+
+useradd -u 1001 -g oinstall -G dba,asmadmin,asmdba,asmoper grid
+useradd -u 1002 -g oinstall -G dba,asmdba oracle
+```
+
+---
+
+## 8. Directory
+
+📍 All Node | root
+Struktur Oracle wajib konsisten.
+
+```bash
+mkdir -p /u01/app/19.0.0/grid
+mkdir -p /u01/app/grid
+mkdir -p /u01/app/oracle/product/19.0.0/dbhome_1
+
+chown -R grid:oinstall /u01/app
+chmod -R 775 /u01/app
+```
+
+---
+
+# PART 4 — ASM SETUP
+
+## 9. Install ASM Package
+
+📍 All Node | root
+Dependency ASM.
 
 ```bash
 yum install -y oracleasm-support oracleasmlib oracleasm
@@ -112,28 +164,30 @@ yum install -y oracleasm-support oracleasmlib oracleasm
 
 ---
 
-## 5. Configure ASM
+## 10. Configure ASM
 
-Mengatur user dan group ASM.
+📍 All Node | root
+Menentukan owner ASM.
 
 ```bash
 oracleasm configure -i
 ```
 
-Input:
+Isi:
 
 ```
-oracle
-oinstall
-y
-y
+Default user: grid
+Default group: oinstall
+Start on boot: y
+Scan on boot: y
 ```
 
 ---
 
-## 6. Initialize ASM
+## 11. Initialize ASM
 
-Menjalankan service ASM.
+📍 All Node | root
+Menjalankan ASM service.
 
 ```bash
 oracleasm init
@@ -141,25 +195,28 @@ oracleasm init
 
 ---
 
-## 7. Partition Disk
+## 12. Partition Disk (DETAIL)
 
-Membuat partisi disk untuk ASM.
+📍 All Node | root
+Membuat partisi ASM.
 
 ```bash
 fdisk /dev/sdb
-fdisk /dev/sdc
 ```
 
-Steps:
+Step:
 
 ```
-n → p → 1 → enter → enter → w
+n → p → 1 → ENTER → ENTER → w
 ```
+
+Ulangi untuk `/dev/sdc`
 
 ---
 
-## 8. Create ASM Disk
+## 13. Create ASM Disk
 
+📍 HANYA NODE1 | root
 Register disk ke ASM.
 
 ```bash
@@ -169,261 +226,69 @@ oracleasm createdisk DATA2 /dev/sdc1
 
 ---
 
-## 9. Scan & Verify
+## 14. Scan ASM
 
-Memastikan disk dikenali ASM.
+📍 ALL NODE | root
+Sinkronisasi disk.
 
 ```bash
 oracleasm scandisks
 oracleasm listdisks
-ls -l /dev/oracleasm/disks/
 ```
+
+👉 Node2 akan otomatis detect disk dari node1
 
 ---
 
-# PART 3 — NETWORK CONFIGURATION
+# PART 5 — SSH SETUP
 
-## 10. Adapter Mapping
+## 15. Passwordless SSH
 
-Memisahkan network public dan private untuk RAC.
-
-| Interface | Function |
-| --------- | -------- |
-| enp0s3    | NAT      |
-| enp0s8    | PUBLIC   |
-| enp0s9    | PRIVATE  |
-
----
-
-## 11. Configure IP (SETIAP NODE BERBEDA)
-
-Set IP untuk komunikasi cluster.
-
-### Node 1 (plvmracdb1)
-
-```bash
-nmcli con mod PUBLIC ipv4.addresses 192.168.56.11/24
-nmcli con mod PUBLIC ipv4.method manual
-nmcli con mod PRIVATE ipv4.addresses 192.168.171.11/24
-nmcli con mod PRIVATE ipv4.method manual
-nmcli con up PUBLIC
-nmcli con up PRIVATE
-```
-
-### Node 2 (plvmracdb2)
-
-```bash
-nmcli con mod PUBLIC ipv4.addresses 192.168.56.20/24
-nmcli con mod PUBLIC ipv4.method manual
-nmcli con mod PRIVATE ipv4.addresses 192.168.171.20/24
-nmcli con mod PRIVATE ipv4.method manual
-nmcli con up PUBLIC
-nmcli con up PRIVATE
-```
-
-### Node 3 (plvmracdb3)
-
-```bash
-nmcli con mod PUBLIC ipv4.addresses 192.168.56.30/24
-nmcli con mod PUBLIC ipv4.method manual
-nmcli con mod PRIVATE ipv4.addresses 192.168.171.30/24
-nmcli con mod PRIVATE ipv4.method manual
-nmcli con up PUBLIC
-nmcli con up PRIVATE
-```
-
----
-
-## 12. /etc/hosts (SEMUA NODE HARUS SAMA)
-
-Digunakan untuk resolusi hostname cluster.
-
-```bash
-127.0.0.1 localhost
-
-# PUBLIC
-192.168.56.11 plvmracdb1
-192.168.56.20 plvmracdb2
-192.168.56.30 plvmracdb3
-
-# VIP
-192.168.56.12 plvmracdb1-vip
-192.168.56.21 plvmracdb2-vip
-192.168.56.31 plvmracdb3-vip
-
-# PRIVATE
-192.168.171.11 plvmracdb1-priv
-192.168.171.20 plvmracdb2-priv
-192.168.171.30 plvmracdb3-priv
-
-# SCAN
-192.168.56.90 rac-scan
-```
-
----
-
-# PART 4 — USER & DIRECTORY
-
-## 13. Create Group
-
-Digunakan untuk permission Oracle.
-
-```bash
-groupadd -g 54321 oinstall
-groupadd -g 54322 dba
-groupadd -g 54331 asmadmin
-groupadd -g 54332 asmdba
-groupadd -g 54333 asmoper
-```
-
----
-
-## 14. Create User
-
-User untuk instalasi Oracle.
-
-```bash
-useradd -u 1001 -g oinstall -G dba,asmadmin,asmdba,asmoper grid
-useradd -u 1002 -g oinstall -G dba,asmdba oracle
-
-passwd grid
-passwd oracle
-```
-
----
-
-## 15. Directory Structure
-
-Struktur folder Oracle.
-
-```bash
-mkdir -p /u01/app/19.0.0/grid
-mkdir -p /u01/app/grid
-mkdir -p /u01/app/oracle
-
-chown -R grid:oinstall /u01/app
-chmod -R 775 /u01/app
-```
-
----
-
-# PART 5 — OS CONFIGURATION
-
-## 16. limits.conf
-
-Setting limit resource OS.
-
-```bash
-vi /etc/security/limits.conf
-
-grid hard nofile 65536
-grid hard nproc 16384
-grid soft stack 10240
-```
-
----
-
-## 17. sysctl.conf
-
-Kernel parameter untuk Oracle.
-
-```bash
-vi /etc/sysctl.conf
-
-fs.file-max = 6815744
-kernel.sem = 250 32000 100 128
-```
-
-Apply:
-
-```bash
-sysctl -p
-```
-
----
-
-# PART 6 — SSH SETUP (WAJIB)
-
-Digunakan untuk komunikasi tanpa password antar node.
-
-## 18. GRID USER
+📍 Node1
 
 ```bash
 su - grid
 ssh-keygen
 ssh-copy-id grid@plvmracdb1
 ssh-copy-id grid@plvmracdb2
-ssh-copy-id grid@plvmracdb3
-```
 
----
-
-## 19. ORACLE USER
-
-```bash
 su - oracle
 ssh-keygen
 ssh-copy-id oracle@plvmracdb1
 ssh-copy-id oracle@plvmracdb2
-ssh-copy-id oracle@plvmracdb3
 ```
 
 ---
 
-## 20. ROOT USER
+# PART 6 — GRID INSTALLATION
+
+## 16. Unzip Grid
+
+📍 Node1 | grid
 
 ```bash
-sudo su -
-ssh-keygen
-ssh-copy-id root@plvmracdb1
-ssh-copy-id root@plvmracdb2
-ssh-copy-id root@plvmracdb3
-```
-
----
-
-## TEST SSH
-
-```bash
-ssh plvmracdb2 hostname
-ssh plvmracdb3 hostname
-```
-
----
-
-# PART 7 — GRID INSTALLATION
-
-## 21. Extract Grid
-
-```bash
-su - grid
 unzip grid_home.zip -d /u01/app/19.0.0/grid
 ```
 
 ---
 
-## 22. Run Installer
+## 17. Run Installer
 
 ```bash
-cd /u01/app/19.0.0/grid
 ./gridSetup.sh
 ```
 
----
+Pilih:
 
-## 23. Configuration
-
-* Cluster Name : rac-cluster
-* SCAN Name    : rac-scan
-
-Network:
-
-* Public  → enp0s8
-* Private → enp0s9
+* RAC
+* ASM
+* Diskgroup DATA
 
 ---
 
-## 24. Root Script
+## 18. Root Script
+
+📍 All Node | root
 
 ```bash
 /u01/app/oraInventory/orainstRoot.sh
@@ -432,17 +297,7 @@ Network:
 
 ---
 
-# PART 8 — ASM DISKGROUP
-
-## 25. Create Diskgroup
-
-* Name        : DATA
-* Disk        : DATA1, DATA2
-* Redundancy  : External
-
----
-
-# PART 9 — VALIDATION GRID
+# PART 7 — VALIDATION
 
 ```bash
 crsctl check cluster -all
@@ -452,18 +307,40 @@ olsnodes -n
 
 ---
 
-# PART 10 — DATABASE INSTALLATION
+# PART 8 — DATABASE INSTALLATION
 
-## 26. Install Oracle Database
+## 19. Unzip DB Home
+
+📍 Node1 | oracle
 
 ```bash
-su - oracle
+unzip db_home.zip -d /u01/app/oracle/product/19.0.0/dbhome_1
+```
+
+---
+
+## 20. Set Permission
+
+📍 All Node | root
+
+```bash
+chown -R oracle:oinstall /u01/app/oracle
+chmod -R 775 /u01/app/oracle
+```
+
+---
+
+## 21. Install DB
+
+📍 Node1 | oracle
+
+```bash
 ./runInstaller
 ```
 
 ---
 
-## 27. Create RAC Database
+## 22. Create Database
 
 ```bash
 dbca
@@ -471,24 +348,22 @@ dbca
 
 ---
 
-# PART 11 — FINAL VALIDATION
+# PART 9 — VALIDATION
 
 ```sql
-sqlplus / as sysdba
-select instance_name from gv$instance;
+select instance_name, host_name from gv$instance;
 ```
 
 ---
 
 # SUMMARY
 
-* Shared disk ASM berhasil dibuat dan dikenali oleh semua node
-* ASM berhasil dikonfigurasi dengan disk DATA1 dan DATA2
-* Network RAC (public, private, VIP, SCAN) berhasil dikonfigurasi
-* SSH passwordless antar node berhasil
-* Grid Infrastructure berhasil diinstall dan cluster terbentuk
-* ASM Diskgroup DATA berhasil dibuat dan mounted
-* Cluster dalam kondisi healthy
-* Oracle Database berhasil diinstall
-* Database RAC berhasil dibuat
-* Instance berjalan di semua node RAC
+✔ Network configured
+✔ ASM configured & shared
+✔ Grid installed
+✔ Cluster healthy
+✔ RAC database running
+
+---
+
+# END
