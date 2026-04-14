@@ -1,6 +1,10 @@
 # Oracle RAC 19c 2 Node + ASM Configuration Guide (ByteWorks)
 
-Topology
+---
+
+## Topology
+
+```
                 +----------------------+
                 |      rac-scan        |
                 |   192.168.56.90      |
@@ -20,6 +24,7 @@ Topology
         |                                       |
         ----------- Shared ASM Disk -------------
                   (sdb, sdc)
+```
 
 ---
 
@@ -36,44 +41,62 @@ Topology
 
 ---
 
-PART 0 — ASM DISK (HOST / VIRTUALBOX)
-0.1 Create ASM Disk
+# PART 0 — ASM DISK (HOST / VIRTUALBOX)
+
+## 0.1 Create ASM Disk
 
 📍 Host (CMD / PowerShell)
 Membuat disk virtual yang akan digunakan sebagai shared storage ASM.
 
+```bash
 VBoxManage createmedium disk --filename D:\RAC\asm1.vdi --size 8192 --format VDI --variant Fixed
 VBoxManage createmedium disk --filename D:\RAC\asm2.vdi --size 8192 --format VDI --variant Fixed
-0.2 Set Disk Shareable
+```
+
+---
+
+## 0.2 Set Disk Shareable
 
 📍 Host
 Agar disk bisa digunakan oleh lebih dari 1 VM (requirement RAC).
 
+```bash
 VBoxManage modifyhd D:\RAC\asm1.vdi --type shareable
 VBoxManage modifyhd D:\RAC\asm2.vdi --type shareable
-0.3 Attach Disk ke VM
+```
+
+---
+
+## 0.3 Attach Disk ke VM
 
 📍 VirtualBox GUI
 
-Tambahkan ke SEMUA NODE:
+Tambahkan ke **SEMUA NODE**:
 
-asm1.vdi
-asm2.vdi
+* asm1.vdi
+* asm2.vdi
 
 Mode:
 
-Shareable
-0.4 Verifikasi Disk
+* Shareable
+
+---
+
+## 0.4 Verifikasi Disk
 
 📍 All Node | root
 Memastikan disk sudah terbaca OS.
 
+```bash
 lsblk
+```
 
 Expected:
 
+```
 sdb
 sdc
+```
 
 # PART 1 — OS PREPARATION
 
