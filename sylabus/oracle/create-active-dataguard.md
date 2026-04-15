@@ -98,7 +98,15 @@ ALTER DATABASE CREATE STANDBY CONTROLFILE AS '/data/backup/controlfile/bytework_
 ## 6. Transfer Controlfile
 
 ```bash
-scp /data/backup/controlfile/bytework_stby.ctl oracle@STANDBY:/data/oradata/ByteWorks_standby/
+scp /data/backup/controlfile/bytework_stby.ctl oracle@STANDBY:/data/backup/controlfile/
+```
+
+## STANDBY
+di standby, masuk ke path oradata biasanya ada di /u01/oradata lalu cp standby controlfile td
+
+```bash
+cp /data/backup/controlfile/bytework_stby.ctl control01.ctl
+cp control01.ctl control02.ctl
 ```
 
 ---
@@ -158,27 +166,26 @@ BYTEWORK_STANDBY =
 
 # PART 3 — STANDBY SERVER
 
-## 9. Set DB Unique Name
+---
+
+## 9. Nyalakan database ke level mount 
+
+```sql
+STARTUP MOUNT 
+```
+## 10. Set DB Unique Name
 
 ```sql
 ALTER SYSTEM SET db_unique_name='ByteWorks_standby' SCOPE=SPFILE;
 ```
 
----
-
-## 10. Restore Standby Controlfile
 
 ```sql
 SHUTDOWN IMMEDIATE;
-STARTUP NOMOUNT;
-```
-
-```rman
-RESTORE STANDBY CONTROLFILE FROM '/data/oradata/ByteWorks_standby/bytework_stby.ctl';
 ```
 
 ```sql
-ALTER DATABASE MOUNT;
+STARTUP MOUNT;
 ```
 
 ---
