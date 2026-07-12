@@ -1,6 +1,6 @@
-# Database Monitoring
+# Oracle Database Monitoring
 
-Database Monitoring adalah aktivitas yang dilakukan Database Administrator (DBA) untuk memastikan database berjalan dengan baik, memiliki kapasitas penyimpanan yang cukup, dan dapat digunakan oleh aplikasi tanpa kendala.
+Monitoring adalah aktivitas yang dilakukan oleh Database Administrator (DBA) untuk memastikan database berjalan dengan baik, memiliki kapasitas penyimpanan yang cukup, serta dapat digunakan oleh aplikasi tanpa kendala.
 
 ---
 
@@ -8,24 +8,46 @@ Database Monitoring adalah aktivitas yang dilakukan Database Administrator (DBA)
 
 Setelah menyelesaikan materi ini, peserta mampu:
 
-- Memahami pentingnya monitoring database.
-- Mengecek status database.
-- Mengecek status instance.
-- Mengecek tablespace.
-- Mengecek session yang sedang aktif.
-- Mengecek blocking session.
-- Mengecek Alert Log.
+- Memahami konsep monitoring Oracle Database.
+- Melakukan pengecekan kesehatan database.
+- Memastikan kapasitas storage masih mencukupi.
+- Melihat user yang sedang menggunakan database.
+- Mengidentifikasi blocking session.
+- Memantau status Oracle Data Guard.
+- Mengetahui SQL yang menggunakan resource terbesar.
 - Menentukan tindakan awal ketika terjadi masalah.
+
+---
+
+# Daftar Isi
+
+1. Monitoring Status Database
+2. Monitoring Instance
+3. Monitoring Listener
+4. Monitoring Tablespace
+5. Monitoring Free Space
+6. Monitoring Datafile
+7. Monitoring Session
+8. Monitoring Blocking Session
+9. Monitoring Locked Object
+10. Monitoring Long Running Query
+11. Monitoring Archive Log
+12. Monitoring Replication (Oracle Data Guard)
+13. Monitoring Top 10 SQL
+14. Monitoring Alert Log
+15. Monitoring Invalid Object
+16. Monitoring Database Version
+17. Daily Health Check
+18. Studi Kasus
+19. Best Practice
 
 ---
 
 # 1. Monitoring Status Database
 
-Tujuan:
+## Tujuan
 
 Memastikan database dalam keadaan normal.
-
-Query:
 
 ```sql
 SELECT
@@ -35,26 +57,18 @@ SELECT
 FROM V$DATABASE;
 ```
 
-Contoh Output
+### Yang perlu diperhatikan
 
-| NAME | OPEN_MODE | DATABASE_ROLE |
-|------|-----------|---------------|
-| ORCL | READ WRITE | PRIMARY |
-
-Yang perlu diperhatikan:
-
-- Database harus berada pada **READ WRITE**
-- Pastikan role sesuai (PRIMARY atau PHYSICAL STANDBY)
+- OPEN_MODE = READ WRITE
+- DATABASE_ROLE = PRIMARY atau PHYSICAL STANDBY
 
 ---
 
-# 2. Monitoring Status Instance
+# 2. Monitoring Instance
 
-Tujuan:
+## Tujuan
 
-Melihat kondisi instance Oracle.
-
-Query
+Melihat kondisi Instance Oracle.
 
 ```sql
 SELECT
@@ -65,20 +79,39 @@ SELECT
 FROM V$INSTANCE;
 ```
 
-Yang perlu diperhatikan
+### Yang perlu diperhatikan
 
 - STATUS = OPEN
-- Kapan terakhir database di-restart
+- HOST_NAME
+- STARTUP_TIME
 
 ---
 
-# 3. Monitoring Tablespace
+# 3. Monitoring Listener
 
-Tujuan
+## Tujuan
 
-Memastikan ruang penyimpanan database masih mencukupi.
+Memastikan Listener Oracle berjalan.
 
-Query
+Linux / Windows
+
+```bash
+lsnrctl status
+```
+
+### Yang perlu diperhatikan
+
+- Listener Status
+- Registered Services
+- Listening Endpoint
+
+---
+
+# 4. Monitoring Tablespace
+
+## Tujuan
+
+Melihat ukuran setiap tablespace.
 
 ```sql
 SELECT
@@ -88,20 +121,18 @@ FROM DBA_DATA_FILES
 GROUP BY TABLESPACE_NAME;
 ```
 
-Yang perlu diperhatikan
+### Yang perlu diperhatikan
 
 - Ukuran setiap tablespace
-- Apakah ada tablespace yang ukurannya terlalu kecil
+- Pastikan masih tersedia ruang yang cukup
 
 ---
 
-# 4. Monitoring Free Space
+# 5. Monitoring Free Space
 
-Tujuan
+## Tujuan
 
-Melihat sisa ruang yang tersedia.
-
-Query
+Melihat sisa ruang pada setiap tablespace.
 
 ```sql
 SELECT
@@ -111,44 +142,65 @@ FROM DBA_FREE_SPACE
 GROUP BY TABLESPACE_NAME;
 ```
 
-Yang perlu diperhatikan
+### Yang perlu diperhatikan
 
-- Jangan sampai free space habis.
+- Free space tidak boleh habis
+- Segera lakukan penambahan datafile jika diperlukan
 
 ---
 
-# 5. Monitoring Session
+# 6. Monitoring Datafile
 
-Tujuan
+## Tujuan
+
+Melihat datafile yang digunakan database.
+
+```sql
+SELECT
+    FILE_NAME,
+    TABLESPACE_NAME,
+    AUTOEXTENSIBLE
+FROM DBA_DATA_FILES;
+```
+
+### Yang perlu diperhatikan
+
+- Lokasi Datafile
+- Status Autoextend
+
+---
+
+# 7. Monitoring Session
+
+## Tujuan
 
 Melihat user yang sedang menggunakan database.
-
-Query
 
 ```sql
 SELECT
     SID,
+    SERIAL#,
     USERNAME,
     STATUS,
-    MACHINE
+    MACHINE,
+    PROGRAM
 FROM V$SESSION
 WHERE USERNAME IS NOT NULL;
 ```
 
-Yang perlu diperhatikan
+### Yang perlu diperhatikan
 
-- User yang login
-- Status ACTIVE atau INACTIVE
+- ACTIVE
+- INACTIVE
+- User yang sedang login
 
 ---
 
-# 6. Monitoring Blocking Session
+# 8. Monitoring Blocking Session
 
-Tujuan
+## Tujuan
 
-Mengetahui apakah ada session yang menghambat session lain.
-
-Query
+Mengetahui apakah terdapat session yang menghambat session lain.
 
 ```sql
 SELECT
@@ -160,103 +212,78 @@ FROM V$SESSION
 WHERE BLOCKING_SESSION IS NOT NULL;
 ```
 
-Yang perlu diperhatikan
+### Yang perlu diperhatikan
 
-- Jika terdapat BLOCKING_SESSION, lakukan investigasi sebelum mengambil tindakan.
-
----
-
-# 7. Monitoring Alert Log
-
-Tujuan
-
-Mengetahui lokasi Alert Log Oracle.
-
-Query
-
-```sql
-SELECT VALUE
-FROM V$DIAG_INFO
-WHERE NAME = 'Diag Trace';
-```
-
-Kemudian buka file:
-
-```
-alert_<SID>.log
-```
-
-Yang perlu diperhatikan
-
-- ORA- Error
-- Startup database
-- Shutdown database
-- Crash database
+- BLOCKING_SESSION tidak boleh bernilai NULL jika terjadi blocking
+- Lakukan investigasi sebelum melakukan KILL SESSION
 
 ---
 
-# 8. Monitoring Archive Log Mode
+# 9. Monitoring Locked Object
 
-Tujuan
+## Tujuan
 
-Memastikan database berjalan pada mode ARCHIVELOG atau NOARCHIVELOG.
-
-Query
-
-```sql
-SELECT LOG_MODE
-FROM V$DATABASE;
-```
-
-Output
-
-| LOG_MODE |
-|----------|
-| ARCHIVELOG |
-
----
-
-# 9. Monitoring Invalid Object
-
-Tujuan
-
-Mengetahui object yang gagal dikompilasi.
-
-Query
+Mengetahui object yang sedang dikunci.
 
 ```sql
 SELECT
-    OWNER,
-    OBJECT_NAME,
-    OBJECT_TYPE
-FROM DBA_OBJECTS
-WHERE STATUS='INVALID';
+    LO.SESSION_ID,
+    DO.OBJECT_NAME,
+    DO.OBJECT_TYPE,
+    LO.LOCKED_MODE
+FROM V$LOCKED_OBJECT LO
+JOIN DBA_OBJECTS DO
+ON LO.OBJECT_ID = DO.OBJECT_ID;
 ```
 
 ---
 
-# 10. Monitoring Database Version
+# 10. Monitoring Long Running Query
 
-Tujuan
+## Tujuan
 
-Mengetahui versi Oracle Database.
-
-Query
+Mengetahui query yang masih berjalan dalam waktu lama.
 
 ```sql
-SELECT BANNER
-FROM V$VERSION;
+SELECT
+    SID,
+    SERIAL#,
+    OPNAME,
+    SOFAR,
+    TOTALWORK
+FROM V$SESSION_LONGOPS
+WHERE SOFAR <> TOTALWORK;
 ```
 
 ---
 
-# 11. Monitoring Replication (Oracle Data Guard)
+# 11. Monitoring Archive Log
 
-Tujuan
+## Tujuan
 
-Memastikan proses replikasi dari Primary Database ke Standby Database berjalan dengan normal.
+Memastikan database berjalan dalam mode ARCHIVELOG.
 
-## Cek Database Role
+```sql
+SELECT
+    LOG_MODE
+FROM V$DATABASE;
+```
+
+Melihat informasi Archive Log.
+
+```sql
+ARCHIVE LOG LIST;
+```
+
+---
+
+# 12. Monitoring Replication (Oracle Data Guard)
+
+## Tujuan
+
+Memastikan proses replikasi antara Primary Database dan Standby Database berjalan dengan normal.
+
+### Cek Role Database
 
 ```sql
 SELECT
@@ -266,21 +293,7 @@ SELECT
 FROM V$DATABASE;
 ```
 
-Contoh Output
-
-| NAME | DATABASE_ROLE | OPEN_MODE |
-|------|---------------|-----------|
-| ORCL | PRIMARY | READ WRITE |
-
-atau
-
-| NAME | DATABASE_ROLE | OPEN_MODE |
-|------|---------------|-----------|
-| ORCL | PHYSICAL STANDBY | READ ONLY WITH APPLY |
-
----
-
-## Cek Managed Recovery Process (Standby)
+### Cek Managed Recovery Process
 
 ```sql
 SELECT
@@ -291,50 +304,79 @@ SELECT
 FROM V$MANAGED_STANDBY;
 ```
 
-Yang perlu diperhatikan
+Yang perlu diperhatikan:
 
-- Pastikan proses **MRP0** berjalan.
-- Pastikan proses **RFS** menerima redo dari Primary Database.
+- MRP0 berjalan.
+- RFS menerima redo dari Primary.
 
----
+### Check Gap Sequence
 
-## Cek Archive Log yang Sudah Diterapkan
+Sebelum menjalankan query:
+
+```sql
+ALTER SESSION SET NLS_DATE_FORMAT='DD-MM-YYYY HH24:MI:SS';
+```
+
+Jalankan query berikut:
 
 ```sql
 SELECT
-    THREAD#,
-    SEQUENCE#,
-    APPLIED
-FROM V$ARCHIVED_LOG
-ORDER BY SEQUENCE# DESC;
+    A.THREAD#,
+    B.LAST_SEQ,
+    A.APPLIED_SEQ,
+    A.LAST_APP_TIMESTAMP,
+    B.LAST_SEQ - A.APPLIED_SEQ AS ARC_DIFF
+FROM
+(
+    SELECT
+        THREAD#,
+        MAX(SEQUENCE#) AS APPLIED_SEQ,
+        MAX(NEXT_TIME) AS LAST_APP_TIMESTAMP
+    FROM GV$ARCHIVED_LOG
+    WHERE APPLIED IN ('YES','IN-MEMORY')
+    GROUP BY THREAD#
+) A,
+(
+    SELECT
+        THREAD#,
+        MAX(SEQUENCE#) AS LAST_SEQ
+    FROM GV$ARCHIVED_LOG
+    GROUP BY THREAD#
+) B
+WHERE A.THREAD# = B.THREAD#;
 ```
 
-Yang perlu diperhatikan
+### Interpretasi
 
-- Nilai **APPLIED = YES** menandakan archive log telah berhasil diterapkan ke Standby Database.
+| ARC_DIFF | Keterangan |
+|-----------|------------|
+| 0 | Replikasi normal |
+| 1 - 5 | Standby sedang mengejar archive log |
+| > 5 | Perlu dilakukan investigasi |
+
+### Jika Menggunakan Data Guard Broker
+
+```bash
+dgmgrl
+
+SHOW CONFIGURATION;
+```
+
+Pastikan status:
+
+```
+SUCCESS
+```
 
 ---
 
-## Jika Menggunakan Data Guard Broker
+# 13. Monitoring Top 10 SQL
 
-```sql
-DGMGRL> SHOW CONFIGURATION;
-```
+## Tujuan
 
-Yang perlu diperhatikan
+Mengetahui SQL yang paling banyak menggunakan resource.
 
-- Status konfigurasi harus **SUCCESS**.
-- Tidak terdapat pesan **WARNING** atau **ERROR**.
-
----
-
-# 12. Monitoring Top 10 SQL
-
-Tujuan
-
-Mengetahui SQL yang paling banyak menggunakan resource sehingga dapat menjadi kandidat untuk analisis atau optimasi.
-
-## Top 10 SQL Berdasarkan CPU Time
+### Top SQL Berdasarkan CPU
 
 ```sql
 SELECT
@@ -347,15 +389,7 @@ ORDER BY CPU_TIME DESC
 FETCH FIRST 10 ROWS ONLY;
 ```
 
-Yang perlu diperhatikan
-
-- SQL dengan penggunaan CPU tinggi.
-- SQL yang dieksekusi berulang kali.
-- SQL dengan waktu eksekusi yang lama.
-
----
-
-## Top 10 SQL Berdasarkan Elapsed Time
+### Top SQL Berdasarkan Elapsed Time
 
 ```sql
 SELECT
@@ -368,100 +402,181 @@ ORDER BY ELAPSED_TIME DESC
 FETCH FIRST 10 ROWS ONLY;
 ```
 
-Yang perlu diperhatikan
-
-- Query yang membutuhkan waktu paling lama untuk selesai.
-- Tidak selalu disebabkan oleh CPU; bisa juga karena I/O, locking, atau menunggu resource lain.
-
----
-
-## Melihat Detail SQL
+### Melihat Isi SQL
 
 ```sql
 SELECT
     SQL_ID,
     SQL_TEXT
 FROM V$SQL
-WHERE SQL_ID = '&SQL_ID';
+WHERE SQL_ID='&SQL_ID';
 ```
 
-Masukkan nilai `SQL_ID` yang ingin diperiksa untuk melihat teks SQL secara lengkap atau sebagian.
+---
+
+# 14. Monitoring Alert Log
+
+## Tujuan
+
+Mengetahui lokasi Alert Log Oracle.
+
+```sql
+SELECT
+    VALUE
+FROM V$DIAG_INFO
+WHERE NAME='Diag Trace';
+```
+
+Kemudian buka file:
+
+```
+alert_<SID>.log
+```
+
+Yang perlu diperhatikan:
+
+- ORA- Error
+- Startup Database
+- Shutdown Database
+- Crash Database
 
 ---
 
-# Kapan DBA Harus Melakukan Analisis?
+# 15. Monitoring Invalid Object
 
-Lakukan investigasi lebih lanjut apabila:
+## Tujuan
 
-- SQL menggunakan CPU sangat tinggi.
-- SQL memiliki waktu eksekusi yang lama.
-- SQL dieksekusi ribuan kali dalam waktu singkat.
-- Replikasi Data Guard mengalami keterlambatan (lag).
-- Archive Log pada Standby belum berstatus **APPLIED**.
-- Status Data Guard Broker bukan **SUCCESS**.
+Mengetahui object yang gagal dikompilasi.
 
-
----
-
-# Studi Kasus
-
-### Kasus 1
-
-Aplikasi tidak bisa login.
-
-Langkah pertama:
-
-- Cek status database
-- Cek instance
-- Cek listener
+```sql
+SELECT
+    OWNER,
+    OBJECT_NAME,
+    OBJECT_TYPE
+FROM DBA_OBJECTS
+WHERE STATUS='INVALID';
+```
 
 ---
 
-### Kasus 2
+# 16. Monitoring Database Version
 
-Aplikasi lambat.
+## Tujuan
 
-Langkah pertama:
+Mengetahui versi Oracle Database.
 
-- Cek session aktif
-- Cek blocking session
-- Cek tablespace
-
----
-
-### Kasus 3
-
-Developer tidak bisa membuat table.
-
-Langkah pertama:
-
-- Cek status user
-- Cek privilege
-- Cek quota tablespace
+```sql
+SELECT
+    BANNER
+FROM V$VERSION;
+```
 
 ---
 
-# Best Practice
+# 17. Daily Health Check
 
-- Lakukan monitoring setiap hari.
-- Jangan langsung melakukan kill session tanpa analisis.
+Checklist yang dapat dilakukan setiap hari:
+
+- Cek Status Database
+- Cek Status Instance
+- Cek Listener
+- Cek Tablespace
+- Cek Free Space
+- Cek Datafile
+- Cek Session
+- Cek Blocking Session
+- Cek Long Running Query
+- Cek Archive Log
+- Cek Status Data Guard
+- Cek Gap Sequence
+- Cek Top 10 SQL
+- Cek Alert Log
+- Cek Invalid Object
+
+---
+
+# 18. Studi Kasus
+
+## Kasus 1
+
+Aplikasi tidak dapat login.
+
+Langkah pemeriksaan:
+
+- Status Database
+- Instance
+- Listener
+
+---
+
+## Kasus 2
+
+Aplikasi berjalan lambat.
+
+Langkah pemeriksaan:
+
+- Session
+- Blocking Session
+- Long Running Query
+- Top SQL
+
+---
+
+## Kasus 3
+
+Standby Database tertinggal.
+
+Langkah pemeriksaan:
+
+- Data Guard Broker
+- Managed Recovery Process
+- Gap Sequence
+- Archive Log
+
+---
+
+## Kasus 4
+
+Developer tidak dapat membuat table.
+
+Langkah pemeriksaan:
+
+- User Privilege
+- Tablespace
+- User Quota
+
+---
+
+# 19. Best Practice
+
+- Lakukan monitoring database secara rutin setiap hari.
+- Jangan langsung melakukan `KILL SESSION` tanpa mengetahui penyebabnya.
 - Pastikan tablespace memiliki ruang kosong yang cukup.
+- Aktifkan Autoextend jika memang diperlukan.
 - Periksa Alert Log secara berkala.
-- Dokumentasikan setiap permasalahan dan tindakan yang dilakukan.
+- Monitor replikasi Oracle Data Guard setiap hari.
+- Dokumentasikan setiap masalah dan tindakan yang dilakukan.
+- Gunakan dashboard monitoring seperti Grafana atau Oracle Enterprise Manager untuk mempermudah pemantauan.
 
 ---
 
 # Ringkasan
 
-| Monitoring | Query |
-|------------|-------|
-| Status Database | V$DATABASE |
-| Status Instance | V$INSTANCE |
+| Monitoring | View / Command |
+|------------|----------------|
+| Database Status | V$DATABASE |
+| Instance | V$INSTANCE |
+| Listener | lsnrctl status |
 | Tablespace | DBA_DATA_FILES |
 | Free Space | DBA_FREE_SPACE |
+| Datafile | DBA_DATA_FILES |
 | Session | V$SESSION |
 | Blocking Session | V$SESSION |
+| Locked Object | V$LOCKED_OBJECT |
+| Long Running Query | V$SESSION_LONGOPS |
+| Archive Log | V$DATABASE, ARCHIVE LOG LIST |
+| Data Guard | V$MANAGED_STANDBY, GV$ARCHIVED_LOG, DGMGRL |
+| Top SQL | V$SQL |
 | Alert Log | V$DIAG_INFO |
-| Archive Log | V$DATABASE |
 | Invalid Object | DBA_OBJECTS |
 | Database Version | V$VERSION |
