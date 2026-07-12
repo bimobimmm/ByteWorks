@@ -1,405 +1,314 @@
-# Oracle Database Monitoring
+# Database Monitoring
 
-Monitoring merupakan aktivitas penting seorang Database Administrator (DBA) untuk memastikan database berjalan dengan optimal, stabil, dan aman. Oracle menyediakan berbagai Dynamic Performance Views (`V$`) dan Data Dictionary Views (`DBA_`) untuk memantau kondisi database secara real-time.
-
----
-
-# Daftar Isi
-
-- Database Status
-- Instance Information
-- Database Version
-- Session Monitoring
-- Active Session
-- Blocking Session
-- Locked Object
-- Long Running Query
-- Tablespace Usage
-- Datafile Monitoring
-- Temp Tablespace
-- Undo Tablespace
-- Archive Log
-- FRA Usage
-- SGA Monitoring
-- PGA Monitoring
-- CPU Usage
-- Memory Usage
-- Wait Event
-- Invalid Object
-- Alert Log
-- Best Practice
+Database Monitoring adalah aktivitas yang dilakukan Database Administrator (DBA) untuk memastikan database berjalan dengan baik, memiliki kapasitas penyimpanan yang cukup, dan dapat digunakan oleh aplikasi tanpa kendala.
 
 ---
 
-# 1. Database Status
+# Tujuan Pembelajaran
 
-Mengetahui status database.
+Setelah menyelesaikan materi ini, peserta mampu:
 
-```sql
-SELECT name,
-       open_mode,
-       database_role
-FROM v$database;
-```
-
----
-
-# 2. Instance Information
-
-```sql
-SELECT instance_name,
-       host_name,
-       version,
-       status,
-       startup_time
-FROM v$instance;
-```
+- Memahami pentingnya monitoring database.
+- Mengecek status database.
+- Mengecek status instance.
+- Mengecek tablespace.
+- Mengecek session yang sedang aktif.
+- Mengecek blocking session.
+- Mengecek Alert Log.
+- Menentukan tindakan awal ketika terjadi masalah.
 
 ---
 
-# 3. Database Version
+# 1. Monitoring Status Database
 
-```sql
-SELECT banner
-FROM v$version;
-```
+Tujuan:
 
----
+Memastikan database dalam keadaan normal.
 
-# 4. Session Monitoring
-
-Melihat seluruh session yang sedang aktif.
-
-```sql
-SELECT sid,
-       serial#,
-       username,
-       status,
-       machine,
-       program
-FROM v$session
-ORDER BY username;
-```
-
----
-
-# 5. Active Session
-
-```sql
-SELECT sid,
-       serial#,
-       username,
-       sql_id,
-       event
-FROM v$session
-WHERE status='ACTIVE';
-```
-
----
-
-# 6. Blocking Session
-
-Mengetahui session yang menyebabkan blocking.
-
-```sql
-SELECT sid,
-       serial#,
-       username,
-       blocking_session
-FROM v$session
-WHERE blocking_session IS NOT NULL;
-```
-
----
-
-# 7. Locked Object
-
-Melihat object yang sedang terkunci.
+Query:
 
 ```sql
 SELECT
-    lo.session_id,
-    do.object_name,
-    do.object_type,
-    lo.locked_mode
-FROM v$locked_object lo
-JOIN dba_objects do
-ON lo.object_id = do.object_id;
+    NAME,
+    OPEN_MODE,
+    DATABASE_ROLE
+FROM V$DATABASE;
 ```
+
+Contoh Output
+
+| NAME | OPEN_MODE | DATABASE_ROLE |
+|------|-----------|---------------|
+| ORCL | READ WRITE | PRIMARY |
+
+Yang perlu diperhatikan:
+
+- Database harus berada pada **READ WRITE**
+- Pastikan role sesuai (PRIMARY atau PHYSICAL STANDBY)
 
 ---
 
-# 8. Long Running Query
+# 2. Monitoring Status Instance
 
-```sql
-SELECT sid,
-       serial#,
-       opname,
-       sofar,
-       totalwork,
-       elapsed_seconds
-FROM v$session_longops
-WHERE sofar <> totalwork;
-```
+Tujuan:
 
----
+Melihat kondisi instance Oracle.
 
-# 9. Tablespace Usage
+Query
 
 ```sql
 SELECT
-    tablespace_name,
-    ROUND(SUM(bytes)/1024/1024,2) size_mb
-FROM dba_data_files
-GROUP BY tablespace_name;
+    INSTANCE_NAME,
+    STATUS,
+    HOST_NAME,
+    STARTUP_TIME
+FROM V$INSTANCE;
 ```
+
+Yang perlu diperhatikan
+
+- STATUS = OPEN
+- Kapan terakhir database di-restart
 
 ---
 
-# 10. Free Space
+# 3. Monitoring Tablespace
+
+Tujuan
+
+Memastikan ruang penyimpanan database masih mencukupi.
+
+Query
 
 ```sql
 SELECT
-    tablespace_name,
-    ROUND(SUM(bytes)/1024/1024,2) free_mb
-FROM dba_free_space
-GROUP BY tablespace_name;
+    TABLESPACE_NAME,
+    ROUND(SUM(BYTES)/1024/1024,2) SIZE_MB
+FROM DBA_DATA_FILES
+GROUP BY TABLESPACE_NAME;
 ```
+
+Yang perlu diperhatikan
+
+- Ukuran setiap tablespace
+- Apakah ada tablespace yang ukurannya terlalu kecil
 
 ---
 
-# 11. Datafile Monitoring
+# 4. Monitoring Free Space
+
+Tujuan
+
+Melihat sisa ruang yang tersedia.
+
+Query
 
 ```sql
 SELECT
-    file_name,
-    tablespace_name,
-    autoextensible
-FROM dba_data_files;
+    TABLESPACE_NAME,
+    ROUND(SUM(BYTES)/1024/1024,2) FREE_MB
+FROM DBA_FREE_SPACE
+GROUP BY TABLESPACE_NAME;
 ```
+
+Yang perlu diperhatikan
+
+- Jangan sampai free space habis.
 
 ---
 
-# 12. Temporary Tablespace
+# 5. Monitoring Session
+
+Tujuan
+
+Melihat user yang sedang menggunakan database.
+
+Query
 
 ```sql
 SELECT
-    tablespace_name,
-    SUM(bytes_used)/1024/1024 used_mb,
-    SUM(bytes_free)/1024/1024 free_mb
-FROM v$temp_space_header
-GROUP BY tablespace_name;
+    SID,
+    USERNAME,
+    STATUS,
+    MACHINE
+FROM V$SESSION
+WHERE USERNAME IS NOT NULL;
 ```
+
+Yang perlu diperhatikan
+
+- User yang login
+- Status ACTIVE atau INACTIVE
 
 ---
 
-# 13. Undo Tablespace
+# 6. Monitoring Blocking Session
+
+Tujuan
+
+Mengetahui apakah ada session yang menghambat session lain.
+
+Query
 
 ```sql
 SELECT
-    tablespace_name,
-    status,
-    SUM(bytes)/1024/1024 size_mb
-FROM dba_undo_extents
-GROUP BY tablespace_name,status;
+    SID,
+    SERIAL#,
+    USERNAME,
+    BLOCKING_SESSION
+FROM V$SESSION
+WHERE BLOCKING_SESSION IS NOT NULL;
 ```
+
+Yang perlu diperhatikan
+
+- Jika terdapat BLOCKING_SESSION, lakukan investigasi sebelum mengambil tindakan.
 
 ---
 
-# 14. Archive Log
+# 7. Monitoring Alert Log
 
-Archive Log Mode.
+Tujuan
 
-```sql
-SELECT log_mode
-FROM v$database;
-```
+Mengetahui lokasi Alert Log Oracle.
 
-Archive Log Destination.
+Query
 
 ```sql
-ARCHIVE LOG LIST;
+SELECT VALUE
+FROM V$DIAG_INFO
+WHERE NAME = 'Diag Trace';
 ```
+
+Kemudian buka file:
+
+```
+alert_<SID>.log
+```
+
+Yang perlu diperhatikan
+
+- ORA- Error
+- Startup database
+- Shutdown database
+- Crash database
 
 ---
 
-# 15. Fast Recovery Area (FRA)
+# 8. Monitoring Archive Log Mode
+
+Tujuan
+
+Memastikan database berjalan pada mode ARCHIVELOG atau NOARCHIVELOG.
+
+Query
+
+```sql
+SELECT LOG_MODE
+FROM V$DATABASE;
+```
+
+Output
+
+| LOG_MODE |
+|----------|
+| ARCHIVELOG |
+
+---
+
+# 9. Monitoring Invalid Object
+
+Tujuan
+
+Mengetahui object yang gagal dikompilasi.
+
+Query
 
 ```sql
 SELECT
-    name,
-    space_limit/1024/1024 size_mb,
-    space_used/1024/1024 used_mb
-FROM v$recovery_file_dest;
+    OWNER,
+    OBJECT_NAME,
+    OBJECT_TYPE
+FROM DBA_OBJECTS
+WHERE STATUS='INVALID';
 ```
 
 ---
 
-# 16. SGA Monitoring
+# 10. Monitoring Database Version
+
+Tujuan
+
+Mengetahui versi Oracle Database.
+
+Query
 
 ```sql
-SHOW SGA;
-```
-
-atau
-
-```sql
-SELECT *
-FROM v$sga;
-```
-
----
-
-# 17. PGA Monitoring
-
-```sql
-SELECT
-    name,
-    value
-FROM v$pgastat;
+SELECT BANNER
+FROM V$VERSION;
 ```
 
 ---
 
-# 18. CPU Usage
+# Studi Kasus
 
-```sql
-SELECT
-    stat_name,
-    value
-FROM v$osstat
-WHERE stat_name LIKE '%CPU%';
-```
+### Kasus 1
 
----
+Aplikasi tidak bisa login.
 
-# 19. Memory Usage
+Langkah pertama:
 
-```sql
-SELECT
-    component,
-    current_size/1024/1024 current_mb
-FROM v$memory_dynamic_components;
-```
+- Cek status database
+- Cek instance
+- Cek listener
 
 ---
 
-# 20. Wait Event
+### Kasus 2
 
-```sql
-SELECT
-    event,
-    total_waits,
-    time_waited
-FROM v$system_event
-ORDER BY total_waits DESC;
-```
+Aplikasi lambat.
 
----
+Langkah pertama:
 
-# 21. Invalid Object
-
-```sql
-SELECT owner,
-       object_name,
-       object_type
-FROM dba_objects
-WHERE status='INVALID';
-```
+- Cek session aktif
+- Cek blocking session
+- Cek tablespace
 
 ---
 
-# 22. Alert Log Location
+### Kasus 3
 
-```sql
-SELECT value
-FROM v$diag_info
-WHERE name='Diag Trace';
-```
+Developer tidak bisa membuat table.
 
----
+Langkah pertama:
 
-# 23. Killing Session
-
-```sql
-ALTER SYSTEM KILL SESSION 'SID,SERIAL#';
-```
-
-Contoh:
-
-```sql
-ALTER SYSTEM KILL SESSION '123,456';
-```
+- Cek status user
+- Cek privilege
+- Cek quota tablespace
 
 ---
 
-# 24. Monitoring Top SQL
+# Best Practice
 
-```sql
-SELECT
-    sql_id,
-    executions,
-    elapsed_time,
-    cpu_time
-FROM v$sql
-ORDER BY elapsed_time DESC
-FETCH FIRST 10 ROWS ONLY;
-```
-
----
-
-# 25. Best Practice
-
-- Monitor session aktif secara berkala.
-- Periksa blocking session sebelum melakukan kill session.
-- Pastikan penggunaan tablespace tidak melebihi 85%.
-- Pantau penggunaan TEMP dan UNDO.
-- Periksa FRA agar tidak penuh.
-- Monitor wait event untuk mendeteksi bottleneck.
-- Cek invalid object setelah deployment aplikasi.
-- Simpan hasil monitoring sebagai baseline performa.
+- Lakukan monitoring setiap hari.
+- Jangan langsung melakukan kill session tanpa analisis.
+- Pastikan tablespace memiliki ruang kosong yang cukup.
+- Periksa Alert Log secara berkala.
+- Dokumentasikan setiap permasalahan dan tindakan yang dilakukan.
 
 ---
 
 # Ringkasan
 
-| Monitoring | View |
-|------------|------|
-| Database | V$DATABASE |
-| Instance | V$INSTANCE |
-| Version | V$VERSION |
-| Session | V$SESSION |
-| Blocking | V$SESSION |
-| Lock | V$LOCKED_OBJECT |
-| Long Operation | V$SESSION_LONGOPS |
+| Monitoring | Query |
+|------------|-------|
+| Status Database | V$DATABASE |
+| Status Instance | V$INSTANCE |
 | Tablespace | DBA_DATA_FILES |
 | Free Space | DBA_FREE_SPACE |
-| Temp | V$TEMP_SPACE_HEADER |
-| Undo | DBA_UNDO_EXTENTS |
+| Session | V$SESSION |
+| Blocking Session | V$SESSION |
+| Alert Log | V$DIAG_INFO |
 | Archive Log | V$DATABASE |
-| FRA | V$RECOVERY_FILE_DEST |
-| SGA | V$SGA |
-| PGA | V$PGASTAT |
-| CPU | V$OSSTAT |
-| Wait Event | V$SYSTEM_EVENT |
 | Invalid Object | DBA_OBJECTS |
-| Top SQL | V$SQL |
-
----
-
-# Latihan
-
-1. Cek status database dan instance.
-2. Lihat seluruh session yang sedang aktif.
-3. Identifikasi apakah ada blocking session.
-4. Cek penggunaan tablespace dan free space.
-5. Periksa penggunaan TEMP dan UNDO.
-6. Pastikan FRA tidak melebihi 80%.
-7. Lihat Top 10 SQL berdasarkan elapsed time.
-8. Cek apakah terdapat invalid object.
-9. Temukan lokasi Alert Log.
-10. Kill salah satu session (gunakan session uji coba).
-
----
-
-**Author:** Bimo Anggoro Jati
+| Database Version | V$VERSION |
