@@ -250,6 +250,159 @@ FROM V$VERSION;
 
 ---
 
+# 11. Monitoring Replication (Oracle Data Guard)
+
+Tujuan
+
+Memastikan proses replikasi dari Primary Database ke Standby Database berjalan dengan normal.
+
+## Cek Database Role
+
+```sql
+SELECT
+    NAME,
+    DATABASE_ROLE,
+    OPEN_MODE
+FROM V$DATABASE;
+```
+
+Contoh Output
+
+| NAME | DATABASE_ROLE | OPEN_MODE |
+|------|---------------|-----------|
+| ORCL | PRIMARY | READ WRITE |
+
+atau
+
+| NAME | DATABASE_ROLE | OPEN_MODE |
+|------|---------------|-----------|
+| ORCL | PHYSICAL STANDBY | READ ONLY WITH APPLY |
+
+---
+
+## Cek Managed Recovery Process (Standby)
+
+```sql
+SELECT
+    PROCESS,
+    STATUS,
+    THREAD#,
+    SEQUENCE#
+FROM V$MANAGED_STANDBY;
+```
+
+Yang perlu diperhatikan
+
+- Pastikan proses **MRP0** berjalan.
+- Pastikan proses **RFS** menerima redo dari Primary Database.
+
+---
+
+## Cek Archive Log yang Sudah Diterapkan
+
+```sql
+SELECT
+    THREAD#,
+    SEQUENCE#,
+    APPLIED
+FROM V$ARCHIVED_LOG
+ORDER BY SEQUENCE# DESC;
+```
+
+Yang perlu diperhatikan
+
+- Nilai **APPLIED = YES** menandakan archive log telah berhasil diterapkan ke Standby Database.
+
+---
+
+## Jika Menggunakan Data Guard Broker
+
+```sql
+DGMGRL> SHOW CONFIGURATION;
+```
+
+Yang perlu diperhatikan
+
+- Status konfigurasi harus **SUCCESS**.
+- Tidak terdapat pesan **WARNING** atau **ERROR**.
+
+---
+
+# 12. Monitoring Top 10 SQL
+
+Tujuan
+
+Mengetahui SQL yang paling banyak menggunakan resource sehingga dapat menjadi kandidat untuk analisis atau optimasi.
+
+## Top 10 SQL Berdasarkan CPU Time
+
+```sql
+SELECT
+    SQL_ID,
+    EXECUTIONS,
+    CPU_TIME/1000000 CPU_SECONDS,
+    ELAPSED_TIME/1000000 ELAPSED_SECONDS
+FROM V$SQL
+ORDER BY CPU_TIME DESC
+FETCH FIRST 10 ROWS ONLY;
+```
+
+Yang perlu diperhatikan
+
+- SQL dengan penggunaan CPU tinggi.
+- SQL yang dieksekusi berulang kali.
+- SQL dengan waktu eksekusi yang lama.
+
+---
+
+## Top 10 SQL Berdasarkan Elapsed Time
+
+```sql
+SELECT
+    SQL_ID,
+    EXECUTIONS,
+    ELAPSED_TIME/1000000 ELAPSED_SECONDS,
+    CPU_TIME/1000000 CPU_SECONDS
+FROM V$SQL
+ORDER BY ELAPSED_TIME DESC
+FETCH FIRST 10 ROWS ONLY;
+```
+
+Yang perlu diperhatikan
+
+- Query yang membutuhkan waktu paling lama untuk selesai.
+- Tidak selalu disebabkan oleh CPU; bisa juga karena I/O, locking, atau menunggu resource lain.
+
+---
+
+## Melihat Detail SQL
+
+```sql
+SELECT
+    SQL_ID,
+    SQL_TEXT
+FROM V$SQL
+WHERE SQL_ID = '&SQL_ID';
+```
+
+Masukkan nilai `SQL_ID` yang ingin diperiksa untuk melihat teks SQL secara lengkap atau sebagian.
+
+---
+
+# Kapan DBA Harus Melakukan Analisis?
+
+Lakukan investigasi lebih lanjut apabila:
+
+- SQL menggunakan CPU sangat tinggi.
+- SQL memiliki waktu eksekusi yang lama.
+- SQL dieksekusi ribuan kali dalam waktu singkat.
+- Replikasi Data Guard mengalami keterlambatan (lag).
+- Archive Log pada Standby belum berstatus **APPLIED**.
+- Status Data Guard Broker bukan **SUCCESS**.
+
+
+---
+
 # Studi Kasus
 
 ### Kasus 1
