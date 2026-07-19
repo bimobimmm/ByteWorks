@@ -115,19 +115,36 @@ cp control01.ctl control02.ctl
 ## 7. listener.ora
 
 ```ini
-LISTENER =
+LISTENER_BYTEWORKS =
   (DESCRIPTION_LIST =
     (DESCRIPTION =
-      (ADDRESS = (PROTOCOL = TCP)(HOST = PRIMARY_HOST)(PORT = 1521))
+      (ADDRESS = (PROTOCOL = TCP)(HOST = 192.168.56.40)(PORT = 1521))
     )
   )
 
-SID_LIST_LISTENER =
+SID_LIST_LISTENER_BYTEWORKS =
   (SID_LIST =
     (SID_DESC =
-      (GLOBAL_DBNAME = BYTEWORK_DGMGRL)
-      (ORACLE_HOME = /data/u01/app/oracle/product/19.0.0/dbhome_19)
-      (SID_NAME = BYTEWORK)
+      (GLOBAL_DBNAME = byteworks_dgmgrl)
+      (ORACLE_HOME = /data/app/oracle/product/19.0.0/dbhome_1)
+      (SID_NAME = byteworks)
+    )
+  )
+```
+```ini
+LISTENER_BYTEWORKS =
+  (DESCRIPTION_LIST =
+    (DESCRIPTION =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = 192.168.56.50)(PORT = 1521))
+    )
+  )
+
+SID_LIST_LISTENER_BYTEWORKS =
+  (SID_LIST =
+    (SID_DESC =
+      (GLOBAL_DBNAME = byteworks_drc_dgmgrl)
+      (ORACLE_HOME = /data/app/oracle/product/19.0.0/dbhome_1)
+      (SID_NAME = byteworks)
     )
   )
 ```
@@ -137,29 +154,41 @@ SID_LIST_LISTENER =
 ## 8. tnsnames.ora
 
 ```ini
-BYTEWORK_PRIMARY =
+BYTEWORKS =
   (DESCRIPTION =
-    (ADDRESS = (PROTOCOL = TCP)(HOST = PRIMARY_HOST)(PORT = 1521))
+    (ADDRESS = (PROTOCOL = TCP)(HOST = 192.168.56.40)(PORT = 1521))
     (CONNECT_DATA =
-      (SERVICE_NAME = BYTEWORK)
+      (SERVICE_NAME = byteworks)
     )
   )
 
-BYTEWORK_DGMGRL =
+BYTEWORKS_DGMGRL =
   (DESCRIPTION =
-    (ADDRESS = (PROTOCOL = TCP)(HOST = PRIMARY_HOST)(PORT = 1521))
+    (ADDRESS = (PROTOCOL = TCP)(HOST = 192.168.56.40)(PORT = 1521))
     (CONNECT_DATA =
-      (SERVICE_NAME = BYTEWORK_DGMRL)
+      (SERVICE_NAME = byteworks_dgmgrl)
     )
   )
 
-BYTEWORK_STANDBY =
+BYTEWORKS_STANDBY_DGMGRL =
   (DESCRIPTION =
-    (ADDRESS = (PROTOCOL = TCP)(HOST = STANDBY_HOST)(PORT = 1521))
+    (ADDRESS = (PROTOCOL = TCP)(HOST = 192.168.56.50)(PORT = 1521))
     (CONNECT_DATA =
-      (SERVICE_NAME = BYTEWORK_STANDBY_DGMRL)
+      (SERVICE_NAME = byteworks_drc_dgmgrl)
     )
   )
+
+BYTEWORKS_STANDBY =
+  (DESCRIPTION =
+    (ADDRESS = (PROTOCOL = TCP)(HOST = 192.168.56.50)(PORT = 1521))
+    (CONNECT_DATA =
+      (SERVICE_NAME = byteworks_drc)
+    )
+  )
+
+
+LISTENER_BYTEWORKS =
+  (ADDRESS = (PROTOCOL = TCP)(HOST = 192.168.56.40)(PORT = 1521))
 ```
 
 ---
